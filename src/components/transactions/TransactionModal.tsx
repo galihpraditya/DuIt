@@ -45,14 +45,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [dateStr, setDateStr] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E-Wallet');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('Tunai');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [error, setError] = useState('');
 
   const paymentMethodsList: { id: PaymentMethodType; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'E-Wallet', label: t.paymentEWallet, icon: Smartphone },
     { id: 'Tunai', label: t.paymentCash, icon: Banknote },
+    { id: 'E-Wallet', label: t.paymentEWallet, icon: Smartphone },
     { id: 'Transfer Bank', label: t.paymentBankTransfer, icon: Landmark },
     { id: 'Kartu Debit', label: t.paymentDebit, icon: CreditCard },
     { id: 'Kartu Kredit', label: t.paymentCredit, icon: CreditCard },
@@ -69,13 +69,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         setDateStr(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       }
       setNotes(initialData.notes || '');
-      setPaymentMethod(initialData.paymentMethod || 'E-Wallet');
+      setPaymentMethod(initialData.paymentMethod || 'Tunai');
     } else {
       setAmountStr('');
       setSelectedCategoryId(categories[0]?.id || '');
       setDateStr(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       setNotes('');
-      setPaymentMethod('E-Wallet');
+      setPaymentMethod('Tunai');
     }
     setError('');
     setIsConfirmDeleteOpen(false);
@@ -93,6 +93,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleResetAmount = () => {
     setAmountStr('');
+  };
+
+  const handleAddIncrement = (increment: number) => {
+    const current = parseInt(amountStr.replace(/\./g, ''), 10) || 0;
+    const next = current + increment;
+    setAmountStr(next.toLocaleString('id-ID'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,11 +119,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
     try {
       setIsSubmitting(true);
+
+      let validIsoDate = new Date().toISOString();
+      if (dateStr) {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          validIsoDate = parsed.toISOString();
+        }
+      }
+
       await onSave(
         {
           amount: Math.round(finalAmount),
           categoryId: selectedCategoryId,
-          date: new Date(dateStr).toISOString(),
+          date: validIsoDate,
           notes: notes.trim(),
           paymentMethod,
         },
@@ -132,6 +147,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  const quickAmounts = [
+    { label: '+10rb', value: 10000 },
+    { label: '+20rb', value: 20000 },
+    { label: '+50rb', value: 50000 },
+    { label: '+100rb', value: 100000 },
+    { label: '+500rb', value: 500000 },
+    { label: '+1jt', value: 1000000 },
+  ];
 
   return (
     <>
@@ -163,8 +187,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
             )}
 
-            {/* Amount Display & Input */}
-            <div className="bg-slate-100/90 dark:bg-slate-950/80 p-5 rounded-3xl text-slate-900 dark:text-white shadow-inner border border-slate-200/80 dark:border-slate-800/80 relative overflow-hidden transition-colors">
+            {/* Amount Display & Input with Quick Add Increments */}
+            <div className="bg-slate-100/90 dark:bg-slate-950/80 p-5 rounded-3xl text-slate-900 dark:text-white shadow-inner border border-slate-200/80 dark:border-slate-800/80 relative overflow-hidden transition-colors space-y-3">
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center space-x-1">
                   <span>{t.amountLabel}</span>
@@ -192,6 +216,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   autoFocus
                   className="w-full bg-transparent text-3xl sm:text-4xl font-black text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none tracking-tight"
                 />
+              </div>
+
+              {/* Quick Amount Increment Pills for Rapid Mobile Input */}
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                {quickAmounts.map((q) => (
+                  <button
+                    key={q.value}
+                    type="button"
+                    onClick={() => handleAddIncrement(q.value)}
+                    className="shrink-0 px-2.5 py-1 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-95 transition-all shadow-xs"
+                  >
+                    {q.label}
+                  </button>
+                ))}
               </div>
             </div>
 

@@ -10,6 +10,7 @@ export interface Translations {
 
   // Dashboard Hero
   totalExpenseThisMonth: string;
+  totalExpenseAllTime: string;
   thisWeekExpense: string;
   recordNew: string;
   totalTransactionsCount: string;
@@ -30,6 +31,12 @@ export interface Translations {
   allCategories: string;
   allMonths: string;
   allWeeks: string;
+  allTransactions: string;
+  allTime: string;
+  showAllTransactions: string;
+  allTimeBadge: string;
+  thisMonthBadge: string;
+  showingAllTime: string;
   weekPrefix: string;
   resetFilter: string;
   noTransactionsYet: string;
@@ -230,6 +237,7 @@ export const translations: Record<Language, Translations> = {
 
     // Dashboard Hero
     totalExpenseThisMonth: 'Total Pengeluaran Bulan Ini',
+    totalExpenseAllTime: 'Total Seluruh Pengeluaran',
     thisWeekExpense: 'Pengeluaran Minggu Ini',
     recordNew: 'Catat Baru',
     totalTransactionsCount: 'total transaksi tercatat',
@@ -250,6 +258,12 @@ export const translations: Record<Language, Translations> = {
     allCategories: 'Semua Kategori',
     allMonths: 'Semua Bulan',
     allWeeks: 'Semua Minggu',
+    allTransactions: 'Seluruh Transaksi',
+    allTime: 'Semua Waktu',
+    showAllTransactions: 'Tampilkan Seluruh Transaksi',
+    allTimeBadge: 'Semua Waktu',
+    thisMonthBadge: 'Bulan Ini',
+    showingAllTime: 'Menampilkan Seluruh Catatan Transaksi',
     weekPrefix: 'Minggu',
     resetFilter: 'Reset Filter',
     noTransactionsYet: 'Belum ada data transaksi',
@@ -449,6 +463,7 @@ export const translations: Record<Language, Translations> = {
 
     // Dashboard Hero
     totalExpenseThisMonth: 'Total Expenses This Month',
+    totalExpenseAllTime: 'Total All-Time Expenses',
     thisWeekExpense: 'This Week Expenses',
     recordNew: 'Record New',
     totalTransactionsCount: 'total recorded transactions',
@@ -469,6 +484,12 @@ export const translations: Record<Language, Translations> = {
     allCategories: 'All Categories',
     allMonths: 'All Months',
     allWeeks: 'All Weeks',
+    allTransactions: 'All Transactions',
+    allTime: 'All Time',
+    showAllTransactions: 'Show All Transactions',
+    allTimeBadge: 'All Time',
+    thisMonthBadge: 'This Month',
+    showingAllTime: 'Showing All Transaction Records',
     weekPrefix: 'Week',
     resetFilter: 'Reset Filter',
     noTransactionsYet: 'No transactions recorded yet',

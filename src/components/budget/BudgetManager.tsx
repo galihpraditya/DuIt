@@ -206,7 +206,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
                         setEditLimitStr(cat.budgetLimit ? cat.budgetLimit.toString() : '');
                       }
                     }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
                     title={t.setBudgetLimit}
                   >
                     <Edit2 className="w-4 h-4" />
@@ -215,22 +215,25 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
 
                 {/* Edit Inline Form */}
                 {isEditing && (
-                  <div className="mt-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 animate-in fade-in">
-                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  <div className="mt-3 p-3.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 animate-in fade-in">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                       {t.maxLimitPerMonth}
                     </label>
                     <div className="flex items-center space-x-2">
-                      <input
-                        type="number"
-                        value={editLimitStr}
-                        onChange={(e) => setEditLimitStr(e.target.value)}
-                        placeholder="Contoh: 1500000"
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        autoFocus
-                      />
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                        <input
+                          type="number"
+                          value={editLimitStr}
+                          onChange={(e) => setEditLimitStr(e.target.value)}
+                          placeholder="Contoh: 1500000"
+                          className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                          autoFocus
+                        />
+                      </div>
                       <button
                         onClick={() => handleSaveBudget(cat.id)}
-                        className="px-3.5 py-2 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors shrink-0"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold hover:from-emerald-600 hover:to-teal-700 transition-all shrink-0 shadow-sm active:scale-95 cursor-pointer"
                       >
                         {t.save}
                       </button>

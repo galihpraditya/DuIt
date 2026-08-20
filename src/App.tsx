@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDefaultData, DEFAULT_CATEGORIES } from './db/database';
 import type { Category, Transaction } from './types';
@@ -11,10 +12,14 @@ import { ExcelModal } from './components/excel/ExcelModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ToastContainer, type ToastMessage } from './components/common/Toast';
+import { MonthYearPickerModal } from './components/common/MonthYearPickerModal';
 import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
 import { authService, type UserProfile } from './services/authService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag } from 'lucide-react';
+import { syncService } from './services/syncService';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag, Layers } from 'lucide-react';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import {
   startOfMonth,
   endOfMonth,
@@ -45,6 +50,11 @@ const ViewLoaderFallback = () => (
 );
 
 export function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const pathname = location.pathname;
+
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return (
       localStorage.getItem('theme') === 'dark' ||
@@ -57,16 +67,79 @@ export function App() {
     return saved === 'en' ? 'en' : 'id';
   });
 
-  const [activeTab, setActiveTab] = useState<string>('transactions');
-  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Track underlying active tab across modal route overlays
+  const [lastActiveTab, setLastActiveTab] = useState<string>('transactions');
+
+  useEffect(() => {
+    if (pathname.startsWith('/analytics')) {
+      setLastActiveTab('analytics');
+    } else if (pathname.startsWith('/budget')) {
+      setLastActiveTab('budget');
+    } else if (pathname.startsWith('/categories')) {
+      setLastActiveTab('categories');
+    } else if (pathname.startsWith('/transactions') || pathname === '/') {
+      setLastActiveTab('transactions');
+    }
+  }, [pathname]);
+
+  const activeTab = useMemo(() => {
+    if (pathname.startsWith('/analytics')) return 'analytics';
+    if (pathname.startsWith('/budget')) return 'budget';
+    if (pathname.startsWith('/categories')) return 'categories';
+    if (pathname.startsWith('/transactions') || pathname === '/') return 'transactions';
+    return lastActiveTab;
+  }, [pathname, lastActiveTab]);
+
+  // Derive route-based modal states
+  const isNewTransactionRoute = pathname === '/transactions/new' || pathname === '/new';
+  const editTxMatch = pathname.match(/^\/transactions\/edit\/([^/]+)$/);
+  const editTransactionId = editTxMatch ? editTxMatch[1] : null;
+
+  const isSettingsOpen = pathname === '/settings';
+  const isExcelModalOpen = pathname === '/excel';
+  const isAuthModalOpen = pathname === '/auth';
+  const isTransactionModalOpen = isNewTransactionRoute || !!editTransactionId;
+
+  // Preset draft state (when user clicks quick preset)
+  const [presetDraft, setPresetDraft] = useState<Transaction | null>(null);
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const t = useMemo(() => translations[language], [language]);
+
+  // Extract selectedMonthFilter from searchParams or default to current month
+  const monthQuery = searchParams.get('month');
+  const selectedMonthFilter = useMemo(() => {
+    if (monthQuery === 'all' || monthQuery === 'ALL') return 'ALL';
+    if (monthQuery && /^\d{4}-\d{2}$/.test(monthQuery)) return monthQuery;
+    return format(new Date(), 'yyyy-MM');
+  }, [monthQuery]);
+
+  const isAllTime = selectedMonthFilter === 'ALL';
+
+  // Helper for closing modals and returning to underlying tab
+  const handleCloseModals = useCallback(() => {
+    setPresetDraft(null);
+    if (activeTab === 'transactions') {
+      if (selectedMonthFilter === 'ALL') {
+        navigate('/transactions?month=all');
+      } else {
+        navigate(`/transactions?month=${selectedMonthFilter}`);
+      }
+    } else {
+      navigate(`/${activeTab}`);
+    }
+  }, [activeTab, selectedMonthFilter, navigate]);
+
+  // Helper for selecting month filter
+  const handleSelectMonthFilter = useCallback((newMonth: string) => {
+    if (newMonth === 'ALL') {
+      navigate('/transactions?month=all');
+    } else {
+      navigate(`/transactions?month=${newMonth}`);
+    }
+  }, [navigate]);
 
   // Toast Helper
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -82,24 +155,80 @@ export function App() {
     setToasts((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  // Initialize Default Data on first launch
+  // Initialize Default Data on first launch & sync auth state
   useEffect(() => {
     initializeDefaultData();
-    authService.getCurrentUser().then(user => {
+    authService.getCurrentUser().then((user) => {
       setCurrentUser(user);
+      if (user?.id) {
+        syncService.syncAll(user.id);
+      }
     });
+
+    const unsubscribe = authService.onAuthStateChange((user) => {
+      setCurrentUser(user);
+      if (user?.id) {
+        syncService.syncAll(user.id);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Sync Dark Mode with DOM
+  // Sync Dark Mode with DOM, Meta Theme Color, and Native Status Bar
   useEffect(() => {
+    const themeBg = darkMode ? '#0f172a' : '#f8fafc';
+    
+    // Update HTML meta theme-color (affects browser and Android PWA chrome)
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', themeBg);
+    }
+
+    const updateStatusBar = async (isDark: boolean) => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
+          await StatusBar.setOverlaysWebView({ overlay: true });
+        } catch (e) {
+          console.error('StatusBar not available', e);
+        }
+      }
+    };
+
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
+      updateStatusBar(true);
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
+      updateStatusBar(false);
     }
   }, [darkMode]);
+
+  // Global Keyboard Shortcuts (N for new transaction, S for settings)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        activeEl?.tagName === 'SELECT';
+      if (isInput) return;
+
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setPresetDraft(null);
+        navigate('/transactions/new');
+      } else if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        navigate('/settings');
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [navigate]);
 
   // Sync Language with LocalStorage
   const handleLanguageChange = (newLang: Language) => {
@@ -108,8 +237,6 @@ export function App() {
     showToast(newLang === 'id' ? 'Bahasa diubah ke Bahasa Indonesia' : 'Language changed to English', 'info');
   };
 
-  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>(() => format(new Date(), 'yyyy-MM'));
-
   // Live Queries from IndexedDB (Dexie reactively observes DB changes automatically)
   const categoriesRaw = useLiveQuery(() => db.categories.toArray());
   const categories = useMemo(() => categoriesRaw || [], [categoriesRaw]);
@@ -117,49 +244,96 @@ export function App() {
   const transactionsRaw = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray());
   const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
 
-  // Current Month Data Calculation
+  // Find editing transaction from DB if ID is present in route
+  const editingTransaction = useMemo(() => {
+    if (presetDraft) return presetDraft;
+    if (!editTransactionId) return null;
+    return transactions.find((t) => t.id === editTransactionId) || null;
+  }, [presetDraft, editTransactionId, transactions]);
+
+  // Current Month / All-Time Data Calculation
   const { currentMonthTotal, currentMonthDailyAverage, currentMonthTxCount, currentDate } = useMemo(() => {
-    const [year, month] = selectedMonthFilter.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const start = startOfMonth(date);
-    const end = endOfMonth(date);
+    let date = new Date();
 
-    const monthTxs = transactions.filter((tx) => {
+    if (!isAllTime) {
       try {
-        const d = parseISO(tx.date);
-        return isWithinInterval(d, { start, end });
+        const [yearStr, monthStr] = (selectedMonthFilter || '').split('-');
+        const y = parseInt(yearStr, 10);
+        const m = parseInt(monthStr, 10);
+        if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+          date = new Date(y, m - 1, 1);
+        }
       } catch {
-        return false;
+        date = new Date();
       }
-    });
+      const start = startOfMonth(date);
+      const end = endOfMonth(date);
 
-    const total = monthTxs.reduce((acc, tx) => acc + tx.amount, 0);
+      const monthTxs = transactions.filter((tx) => {
+        try {
+          const d = parseISO(tx.date);
+          return isWithinInterval(d, { start, end });
+        } catch {
+          return false;
+        }
+      });
 
-    const now = new Date();
-    let days = 1;
-    if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
-      days = Math.max(1, now.getDate());
+      const total = monthTxs.reduce((acc, tx) => acc + tx.amount, 0);
+
+      const now = new Date();
+      let days = 1;
+      if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
+        days = Math.max(1, now.getDate());
+      } else {
+        days = Math.max(1, end.getDate());
+      }
+      const dailyAverage = Math.round(total / days);
+
+      return { 
+        currentMonthTotal: total, 
+        currentMonthDailyAverage: dailyAverage, 
+        currentMonthTxCount: monthTxs.length,
+        currentDate: date 
+      };
     } else {
-      days = Math.max(1, end.getDate());
-    }
-    const dailyAverage = Math.round(total / days);
+      // ALL-TIME CALCULATION
+      const total = transactions.reduce((acc, tx) => acc + tx.amount, 0);
+      const uniqueDays = new Set<string>();
+      transactions.forEach((tx) => {
+        try {
+          uniqueDays.add(tx.date.split('T')[0]);
+        } catch {}
+      });
+      const daysCount = Math.max(1, uniqueDays.size);
+      const dailyAverage = Math.round(total / daysCount);
 
-    return { 
-      currentMonthTotal: total, 
-      currentMonthDailyAverage: dailyAverage, 
-      currentMonthTxCount: monthTxs.length,
-      currentDate: date 
-    };
-  }, [transactions, selectedMonthFilter]);
+      return {
+        currentMonthTotal: total,
+        currentMonthDailyAverage: dailyAverage,
+        currentMonthTxCount: transactions.length,
+        currentDate: new Date(),
+      };
+    }
+  }, [transactions, selectedMonthFilter, isAllTime]);
 
   const handlePrevMonth = () => {
+    if (isAllTime) {
+      const cur = format(new Date(), 'yyyy-MM');
+      handleSelectMonthFilter(cur);
+      return;
+    }
     const newDate = subMonths(currentDate, 1);
-    setSelectedMonthFilter(format(newDate, 'yyyy-MM'));
+    handleSelectMonthFilter(format(newDate, 'yyyy-MM'));
   };
 
   const handleNextMonth = () => {
+    if (isAllTime) {
+      const cur = format(new Date(), 'yyyy-MM');
+      handleSelectMonthFilter(cur);
+      return;
+    }
     const newDate = addMonths(currentDate, 1);
-    setSelectedMonthFilter(format(newDate, 'yyyy-MM'));
+    handleSelectMonthFilter(format(newDate, 'yyyy-MM'));
   };
 
   // CRUD Handlers for Transactions
@@ -168,6 +342,10 @@ export function App() {
       await db.transactions.update(id, {
         ...data,
       });
+      if (currentUser?.id) {
+        const updated = await db.transactions.get(id);
+        if (updated) syncService.pushTransaction(updated, currentUser.id);
+      }
       showToast(language === 'id' ? 'Catatan pengeluaran berhasil diperbarui!' : 'Expense updated successfully!', 'success');
     } else {
       const newTransaction: Transaction = {
@@ -176,6 +354,9 @@ export function App() {
         createdAt: new Date().toISOString(),
       };
       await db.transactions.add(newTransaction);
+      if (currentUser?.id) {
+        syncService.pushTransaction(newTransaction, currentUser.id);
+      }
       showToast(
         language === 'id'
           ? `Berhasil mencatat ${formatIDR(data.amount, false, language)}!`
@@ -187,6 +368,9 @@ export function App() {
 
   const handleDeleteTransaction = async (id: string) => {
     await db.transactions.delete(id);
+    if (currentUser?.id) {
+      syncService.deleteTransaction(id, currentUser.id);
+    }
     showToast(language === 'id' ? 'Transaksi berhasil dihapus.' : 'Transaction deleted.', 'info');
   };
 
@@ -194,6 +378,10 @@ export function App() {
   const handleSaveCategory = async (data: Omit<Category, 'id' | 'createdAt'>, id?: string) => {
     if (id) {
       await db.categories.update(id, { ...data });
+      if (currentUser?.id) {
+        const updated = await db.categories.get(id);
+        if (updated) syncService.pushCategory(updated, currentUser.id);
+      }
       showToast(
         language === 'id' ? `Kategori "${data.name}" berhasil diperbarui!` : `Category "${data.name}" updated!`,
         'success'
@@ -205,6 +393,9 @@ export function App() {
         createdAt: new Date().toISOString(),
       };
       await db.categories.add(newCat);
+      if (currentUser?.id) {
+        syncService.pushCategory(newCat, currentUser.id);
+      }
       showToast(
         language === 'id' ? `Kategori "${data.name}" berhasil dibuat!` : `Category "${data.name}" created!`,
         'success'
@@ -229,11 +420,25 @@ export function App() {
       fallbackCatId = defaultOthers.id;
     }
 
+    // Re-route related transactions
     const relatedTxs = await db.transactions.where('categoryId').equals(id).toArray();
     for (const tx of relatedTxs) {
       await db.transactions.update(tx.id, { categoryId: fallbackCatId });
     }
+
+    // Re-route related recurring expenses
+    const relatedRecurring = await db.recurringExpenses.where('categoryId').equals(id).toArray();
+    for (const rec of relatedRecurring) {
+      await db.recurringExpenses.update(rec.id, { categoryId: fallbackCatId });
+    }
+
+    // Delete category budget entries
+    await db.budgets.where('categoryId').equals(id).delete();
+
     await db.categories.delete(id);
+    if (currentUser?.id) {
+      syncService.deleteCategory(id, currentUser.id);
+    }
     showToast(
       language === 'id'
         ? 'Kategori berhasil dihapus dan transaksi dialihkan.'
@@ -265,16 +470,30 @@ export function App() {
   // Quick Preset Add Handler
   const handleSelectQuickPreset = (preset: QuickPresetItem) => {
     const now = new Date();
-    setEditingTransaction({
+    setPresetDraft({
       id: '',
       amount: preset.amount,
       categoryId: preset.categoryId,
       date: now.toISOString(),
       notes: preset.notes,
-      paymentMethod: 'E-Wallet',
+      paymentMethod: 'Tunai',
       createdAt: now.toISOString(),
     });
-    setIsTransactionModalOpen(true);
+    navigate('/transactions/new');
+  };
+
+  const handleTabNavigation = (tab: string) => {
+    if (tab === 'transactions') {
+      if (selectedMonthFilter === 'ALL') {
+        navigate('/transactions?month=all');
+      } else if (selectedMonthFilter !== format(new Date(), 'yyyy-MM')) {
+        navigate(`/transactions?month=${selectedMonthFilter}`);
+      } else {
+        navigate('/transactions');
+      }
+    } else {
+      navigate(`/${tab}`);
+    }
   };
 
   return (
@@ -288,21 +507,20 @@ export function App() {
 
       {/* Top Navbar */}
       <Navbar
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => navigate('/settings')}
         onOpenNewTransaction={() => {
-          setEditingTransaction(null);
-          setIsTransactionModalOpen(true);
+          setPresetDraft(null);
+          navigate('/transactions/new');
         }}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => navigate('/auth')}
         currentUser={currentUser}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleTabNavigation}
         t={t}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
-        {/* Top Summary Banner: Clean Minimalist Financial Overview Card (Removed 'Bulan Ini' and 'Tersimpan Offline' badges) */}
         {/* Top Summary Banner: Modern FinTech Hero Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">
@@ -319,7 +537,7 @@ export function App() {
                       <Banknote className="w-4 h-4 stroke-[2.5]" />
                     </div>
                     <span className="text-sm sm:text-base font-bold text-white tracking-wide">
-                      {t.totalExpenseThisMonth}
+                      {isAllTime ? t.totalExpenseAllTime : t.totalExpenseThisMonth}
                     </span>
                   </div>
 
@@ -332,9 +550,29 @@ export function App() {
                     >
                       <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
                     </button>
-                    <span className="text-xs sm:text-sm font-extrabold px-3 text-center text-white min-w-[120px]">
-                      {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enLocale : idLocale })}
-                    </span>
+                    
+                    {/* Clickable Month/Year Selector Pill */}
+                    <button
+                      type="button"
+                      onClick={() => setIsMonthPickerOpen(true)}
+                      className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-xl hover:bg-white/15 active:scale-95 transition-all text-white font-extrabold text-xs sm:text-sm min-w-[120px]"
+                      title={language === 'en' ? 'Click to select month & year' : 'Klik untuk memilih bulan & tahun'}
+                    >
+                      {isAllTime ? (
+                        <>
+                          <Layers className="w-3.5 h-3.5 text-emerald-300 stroke-[2.5]" />
+                          <span>{t.allTransactions}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Calendar className="w-3.5 h-3.5 text-emerald-300 stroke-[2.5]" />
+                          <span>
+                            {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enLocale : idLocale })}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       onClick={handleNextMonth}
                       className="p-1.5 hover:bg-white/15 rounded-xl transition-all text-emerald-100 hover:text-white active:scale-95"
@@ -398,14 +636,14 @@ export function App() {
             transactions={transactions}
             categories={categories}
             selectedMonthFilter={selectedMonthFilter}
+            onSelectMonthFilter={handleSelectMonthFilter}
             onEditTransaction={(tx) => {
-              setEditingTransaction(tx);
-              setIsTransactionModalOpen(true);
+              navigate(`/transactions/edit/${tx.id}`);
             }}
             onDeleteTransaction={handleDeleteTransaction}
             onOpenNewTransaction={() => {
-              setEditingTransaction(null);
-              setIsTransactionModalOpen(true);
+              setPresetDraft(null);
+              navigate('/transactions/new');
             }}
             lang={language}
             t={t}
@@ -453,10 +691,10 @@ export function App() {
       {/* Mobile Floating Bottom Navigation (Symmetrical 5 Direct Tabs) */}
       <BottomNav
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleTabNavigation}
         onOpenNewTransaction={() => {
-          setEditingTransaction(null);
-          setIsTransactionModalOpen(true);
+          setPresetDraft(null);
+          navigate('/transactions/new');
         }}
         t={t}
       />
@@ -464,17 +702,13 @@ export function App() {
       {/* Transaction Modal (Add / Edit) */}
       <TransactionModal
         isOpen={isTransactionModalOpen}
-        onClose={() => {
-          setIsTransactionModalOpen(false);
-          setEditingTransaction(null);
-        }}
+        onClose={handleCloseModals}
         onSave={handleSaveTransaction}
         onDelete={handleDeleteTransaction}
         categories={categories}
         initialData={editingTransaction}
         onOpenCategoryManager={() => {
-          setIsTransactionModalOpen(false);
-          setActiveTab('categories');
+          navigate('/categories');
         }}
         lang={language}
         t={t}
@@ -483,7 +717,7 @@ export function App() {
       {/* Excel Center Modal (Import & Export) */}
       <ExcelModal
         isOpen={isExcelModalOpen}
-        onClose={() => setIsExcelModalOpen(false)}
+        onClose={handleCloseModals}
         transactions={transactions}
         categories={categories}
         lang={language}
@@ -496,15 +730,15 @@ export function App() {
       {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={handleCloseModals}
         language={language}
         onChangeLanguage={handleLanguageChange}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(!darkMode)}
-        onOpenExcelModal={() => setIsExcelModalOpen(true)}
+        onOpenExcelModal={() => navigate('/excel')}
         onResetAllData={handleResetAllData}
         currentUser={currentUser}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => navigate('/auth')}
         onLogout={async () => {
           await authService.logout();
           setCurrentUser(null);
@@ -516,13 +750,25 @@ export function App() {
       {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={(user) => {
+        onClose={handleCloseModals}
+        onSuccess={async (user) => {
           setCurrentUser(user);
-          setIsAuthModalOpen(false);
+          handleCloseModals();
           showToast(t.authSuccessLogin, 'success');
+          if (user?.id) {
+            await syncService.syncAll(user.id);
+          }
         }}
         t={t}
+      />
+
+      {/* Month & Year Picker Modal */}
+      <MonthYearPickerModal
+        isOpen={isMonthPickerOpen}
+        onClose={() => setIsMonthPickerOpen(false)}
+        selectedMonth={selectedMonthFilter}
+        onSelectMonth={(newMonth) => handleSelectMonthFilter(newMonth)}
+        lang={language}
       />
 
       {/* In-App Toast Feedback Container */}

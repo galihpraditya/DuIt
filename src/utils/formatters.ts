@@ -90,10 +90,12 @@ export interface MonthWeekOption {
  * Week 4: 22 - End of Month (adaptive: 28/29/30/31)
  */
 export function getMonthWeeks(yearMonthStr: string, lang: Language = 'id'): MonthWeekOption[] {
+  if (!yearMonthStr || yearMonthStr === 'ALL') return [];
   try {
     const [yearStr, monthStr] = yearMonthStr.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10) - 1;
+    if (isNaN(year) || isNaN(month)) return [];
 
     const firstDate = startOfMonth(new Date(year, month, 1));
     const lastDate = endOfMonth(firstDate);

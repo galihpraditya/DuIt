@@ -45,10 +45,10 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
           await db.budgets.clear();
           await db.recurringExpenses.clear();
 
-          if (data.categories.length) await db.categories.bulkAdd(data.categories);
-          if (data.transactions.length) await db.transactions.bulkAdd(data.transactions);
-          if (data.budgets?.length) await db.budgets.bulkAdd(data.budgets);
-          if (data.recurringExpenses?.length) await db.recurringExpenses.bulkAdd(data.recurringExpenses);
+          if (data.categories.length) await db.categories.bulkPut(data.categories);
+          if (data.transactions.length) await db.transactions.bulkPut(data.transactions);
+          if (data.budgets?.length) await db.budgets.bulkPut(data.budgets);
+          if (data.recurringExpenses?.length) await db.recurringExpenses.bulkPut(data.recurringExpenses);
         });
 
         resolve({ success: true, message: 'Data cadangan berhasil dipulihkan!' });

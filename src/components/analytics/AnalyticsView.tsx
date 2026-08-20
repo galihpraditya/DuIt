@@ -175,9 +175,36 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   }, [currentPeriodTransactions]);
 
   const averagePerDay = useMemo(() => {
-    const days = Math.max(1, differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1);
+    const now = new Date();
+    let days = 1;
+
+    if (selectedPeriod === 'today') {
+      days = 1;
+    } else if (selectedPeriod === '7days') {
+      days = 7;
+    } else if (selectedPeriod === '30days') {
+      days = 30;
+    } else if (selectedPeriod === 'this_month') {
+      // Days elapsed so far this month (matching transactions view)
+      days = Math.max(1, now.getDate());
+    } else if (selectedPeriod === 'last_month') {
+      days = Math.max(1, currentInterval.end.getDate());
+    } else if (selectedPeriod === 'this_year') {
+      // Days elapsed so far this year
+      days = Math.max(1, differenceInCalendarDays(now, currentInterval.start) + 1);
+    } else if (selectedPeriod === 'custom') {
+      const effectiveEnd = currentInterval.end > now ? now : currentInterval.end;
+      if (effectiveEnd >= currentInterval.start) {
+        days = Math.max(1, differenceInCalendarDays(effectiveEnd, currentInterval.start) + 1);
+      } else {
+        days = Math.max(1, differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1);
+      }
+    } else {
+      days = Math.max(1, differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1);
+    }
+
     return Math.round(currentTotal / days);
-  }, [currentTotal, currentInterval]);
+  }, [currentTotal, selectedPeriod, currentInterval]);
 
   // Category Distribution Data (Donut Chart)
   const categoryData = useMemo(() => {
@@ -283,10 +310,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setSelectedPeriod(tab.id as PeriodOption)}
-                className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
                   selectedPeriod === tab.id
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
                 }`}
               >
                 {tab.label}

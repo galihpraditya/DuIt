@@ -9,8 +9,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#0f172a'
+      overlaysWebView: true
     },
     Keyboard: {
       resize: 'body',

@@ -250,35 +250,37 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
               {/* Color Picker */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                   <span>{t.pickColorLabel}</span>
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   {PRESET_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`w-7 h-7 rounded-xl transition-transform ${
-                        color === c ? 'scale-110 ring-2 ring-offset-2 ring-emerald-500' : 'hover:scale-105'
+                      className={`w-7 h-7 rounded-xl transition-all cursor-pointer ${
+                        color === c ? 'scale-115 ring-2 ring-offset-2 ring-emerald-500 shadow-md' : 'hover:scale-105 opacity-85 hover:opacity-100'
                       }`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-7 h-7 rounded-xl cursor-pointer border-0 bg-transparent p-0"
-                    title={t.pickColorLabel}
-                  />
+                  <label className="w-7 h-7 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-600 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 overflow-hidden relative" title={t.pickColorLabel}>
+                    <span>+</span>
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                    />
+                  </label>
                 </div>
               </div>
 
               {/* Icon Picker */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
                   {t.pickIconLabel}
                 </label>
                 <IconPicker selectedIcon={icon} onSelectIcon={setIcon} />
@@ -286,24 +288,27 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
               {/* Optional Budget Limit */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
                   <span>{t.monthlyLimitOptionalLabel}</span>
                 </label>
-                <input
-                  type="number"
-                  value={budgetLimitStr}
-                  onChange={(e) => setBudgetLimitStr(e.target.value)}
-                  placeholder="Contoh: 1500000"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                  <input
+                    type="number"
+                    value={budgetLimitStr}
+                    onChange={(e) => setBudgetLimitStr(e.target.value)}
+                    placeholder="Contoh: 1500000"
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2 transition-transform active:scale-[0.99] disabled:opacity-50"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>{isSubmitting ? '...' : t.saveCategoryBtn}</span>

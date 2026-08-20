@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'DuIt Expense Tracker',
         short_name: 'DuIt',
         description: 'DuIt - Aplikasi Catatan Pengeluaran & Analitik Finansial Offline-First',
-        theme_color: '#10b981',
+        theme_color: '#f8fafc',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',

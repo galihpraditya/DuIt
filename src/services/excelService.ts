@@ -79,6 +79,44 @@ export interface ParsedImportRow {
   error?: string;
 }
 
+function parseFlexibleDate(dateVal: unknown): Date {
+  if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+    return dateVal;
+  }
+
+  if (typeof dateVal === 'number' && dateVal > 0) {
+    // Excel serial date (days since Dec 30, 1899)
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const millis = excelEpoch.getTime() + dateVal * 86400000;
+    const d = new Date(millis);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  if (typeof dateVal === 'string' && dateVal.trim() !== '') {
+    const raw = dateVal.trim();
+    
+    // Check DD/MM/YYYY or DD-MM-YYYY with optional time
+    const ddmmyyyyMatch = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    if (ddmmyyyyMatch) {
+      const day = parseInt(ddmmyyyyMatch[1], 10);
+      const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+      const year = parseInt(ddmmyyyyMatch[3], 10);
+      const hours = ddmmyyyyMatch[4] ? parseInt(ddmmyyyyMatch[4], 10) : 12;
+      const minutes = ddmmyyyyMatch[5] ? parseInt(ddmmyyyyMatch[5], 10) : 0;
+      const seconds = ddmmyyyyMatch[6] ? parseInt(ddmmyyyyMatch[6], 10) : 0;
+      const d = new Date(year, month, day, hours, minutes, seconds);
+      if (!isNaN(d.getTime())) return d;
+    }
+
+    const standardParsed = new Date(raw);
+    if (!isNaN(standardParsed.getTime())) {
+      return standardParsed;
+    }
+  }
+
+  return new Date();
+}
+
 export async function parseExcelFile(file: File): Promise<ParsedImportRow[]> {
   const XLSX = await import('xlsx');
 
@@ -117,15 +155,7 @@ export async function parseExcelFile(file: File): Promise<ParsedImportRow[]> {
             };
           }
 
-          let parsedDate = new Date();
-          if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
-            parsedDate = dateVal;
-          } else if (typeof dateVal === 'string' && dateVal.trim() !== '') {
-            const parsed = new Date(dateVal);
-            if (!isNaN(parsed.getTime())) {
-              parsedDate = parsed;
-            }
-          }
+          const parsedDate = parseFlexibleDate(dateVal);
 
           // Strip leading/trailing spaces and handle dash '-' as empty string for notes
           const cleanedNotes = String(notesVal || '').trim();

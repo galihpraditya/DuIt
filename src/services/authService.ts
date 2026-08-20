@@ -1,4 +1,6 @@
 // src/services/authService.ts
+import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { generateId } from '../utils/formatters';
 
 export interface UserProfile {
   id: string;
@@ -11,70 +13,123 @@ export interface UserProfile {
 const USERS_STORAGE_KEY = 'duit_users_db';
 const SESSION_STORAGE_KEY = 'duit_active_session';
 
-/**
- * Mendapatkan daftar semua pengguna terdaftar dari LocalStorage.
- * Digunakan sebagai simulasi database.
- */
-function getUsersDb(): UserProfile[] {
+function getLocalUsersDb(): UserProfile[] {
   const data = localStorage.getItem(USERS_STORAGE_KEY);
   return data ? JSON.parse(data) : [];
 }
 
-function saveUsersDb(users: UserProfile[]) {
+function saveLocalUsersDb(users: UserProfile[]) {
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 }
 
-/**
- * Mock Service untuk autentikasi yang bekerja 100% offline (Hybrid Local-First).
- * Semua fungsi ini bersifat Asynchronous (mengembalikan Promise) agar mudah diganti
- * dengan pemanggilan API nyata (Supabase/Firebase) di masa depan tanpa mengubah UI.
- */
 export const authService = {
   /**
-   * Mendaftarkan pengguna baru
+   * Mendaftarkan pengguna baru via Supabase Auth (atau Local Mock jika belum dikonfigurasi)
    */
   async registerWithEmail(email: string, password: string, name?: string): Promise<UserProfile> {
-    // Simulasi delay jaringan
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    if (isSupabaseConfigured) {
+      const displayName = name?.trim() || email.split('@')[0];
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+          },
+        },
+      });
 
-    const users = getUsersDb();
-    
-    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.user) {
+        throw new Error('Gagal membuat akun. Silakan periksa kembali email Anda.');
+      }
+
+      const userProfile: UserProfile = {
+        id: data.user.id,
+        email: data.user.email || email,
+        displayName: displayName,
+        createdAt: data.user.created_at || new Date().toISOString(),
+      };
+
+      // Simpan / upsert ke tabel profiles
+      try {
+        await supabase.from('profiles').upsert({
+          id: userProfile.id,
+          email: userProfile.email,
+          display_name: userProfile.displayName,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (profileErr) {
+        console.warn('Upsert profile notice:', profileErr);
+      }
+
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+      return userProfile;
+    }
+
+    // --- FALLBACK OFFLINE LOCAL STORAGE MOCK ---
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const users = getLocalUsersDb();
+
+    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
       throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau masuk akun.');
     }
 
-    // CATATAN: Di aplikasi production sungguhan, password TIDAK BOLEH disimpan plain text.
-    // Karena ini adalah offline-first mock DB, kita simpan password secara lokal di item terpisah 
-    // hanya untuk keperluan demo login antar device mock.
     const mockPasswords = JSON.parse(localStorage.getItem('duit_mock_passwords') || '{}');
-
     const newUser: UserProfile = {
-      id: crypto.randomUUID(),
+      id: generateId('user'),
       email: email.toLowerCase(),
-      displayName: name,
+      displayName: name || email.split('@')[0],
       createdAt: new Date().toISOString(),
     };
 
     users.push(newUser);
-    saveUsersDb(users);
-    
+    saveLocalUsersDb(users);
+
     mockPasswords[newUser.id] = password;
     localStorage.setItem('duit_mock_passwords', JSON.stringify(mockPasswords));
-
-    // Otomatis login setelah daftar
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newUser));
 
     return newUser;
   },
 
   /**
-   * Masuk dengan akun yang sudah ada
+   * Masuk dengan email & password
    */
   async loginWithEmail(email: string, password: string): Promise<UserProfile> {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    const users = getUsersDb();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (error) {
+        throw new Error(error.message === 'Invalid login credentials' ? 'Email atau kata sandi salah.' : error.message);
+      }
+
+      if (!data.user) {
+        throw new Error('Login gagal. Silakan coba kembali.');
+      }
+
+      const userProfile: UserProfile = {
+        id: data.user.id,
+        email: data.user.email || email,
+        displayName: data.user.user_metadata?.display_name || email.split('@')[0],
+        avatarUrl: data.user.user_metadata?.avatar_url,
+        createdAt: data.user.created_at || new Date().toISOString(),
+      };
+
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+      return userProfile;
+    }
+
+    // --- FALLBACK OFFLINE LOCAL STORAGE MOCK ---
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const users = getLocalUsersDb();
+    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
       throw new Error('Email atau sandi salah.');
@@ -90,9 +145,29 @@ export const authService = {
   },
 
   /**
-   * Mendapatkan pengguna yang sedang aktif
+   * Mendapatkan pengguna yang sedang aktif (current session)
    */
   async getCurrentUser(): Promise<UserProfile | null> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const user = session.user;
+          const userProfile: UserProfile = {
+            id: user.id,
+            email: user.email || '',
+            displayName: user.user_metadata?.display_name || user.email?.split('@')[0],
+            avatarUrl: user.user_metadata?.avatar_url,
+            createdAt: user.created_at || new Date().toISOString(),
+          };
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+          return userProfile;
+        }
+      } catch (e) {
+        console.warn('Supabase getSession error:', e);
+      }
+    }
+
     try {
       const data = localStorage.getItem(SESSION_STORAGE_KEY);
       if (!data) return null;
@@ -103,10 +178,42 @@ export const authService = {
   },
 
   /**
-   * Keluar dari sesi
+   * Keluar dari akun (Sign Out)
    */
   async logout(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase signOut error:', e);
+      }
+    }
     localStorage.removeItem(SESSION_STORAGE_KEY);
-  }
+  },
+
+  /**
+   * Memantau perubahan status autentikasi secara realtime
+   */
+  onAuthStateChange(callback: (user: UserProfile | null) => void) {
+    if (isSupabaseConfigured) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          const userProfile: UserProfile = {
+            id: session.user.id,
+            email: session.user.email || '',
+            displayName: session.user.user_metadata?.display_name || session.user.email?.split('@')[0],
+            avatarUrl: session.user.user_metadata?.avatar_url,
+            createdAt: session.user.created_at || new Date().toISOString(),
+          };
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+          callback(userProfile);
+        } else {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          callback(null);
+        }
+      });
+      return () => subscription.unsubscribe();
+    }
+    return () => {};
+  },
 };
