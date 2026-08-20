@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDefaultData, DEFAULT_CATEGORIES } from './db/database';
@@ -20,6 +20,7 @@ import { syncService } from './services/syncService';
 import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag, Layers } from 'lucide-react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import {
   startOfMonth,
   endOfMonth,
@@ -174,6 +175,50 @@ export function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Real-time synchronization & App Resume / Window Focus listeners
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const userId = currentUser.id;
+
+    // 1. Supabase Realtime channel subscription (instant update across web & mobile)
+    const unsubscribeRealtime = syncService.subscribeToRealtime(userId, () => {
+      syncService.syncAll(userId);
+    });
+
+    // 2. Mobile App Resume listener (when returning from background on Android/iOS)
+    let appStateHandle: any;
+    if (Capacitor.isNativePlatform()) {
+      appStateHandle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          syncService.syncAll(userId);
+        }
+      });
+    }
+
+    // 3. Web Window Focus & Visibility Change listener
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncService.syncAll(userId);
+      }
+    };
+    const handleWindowFocus = () => {
+      syncService.syncAll(userId);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      unsubscribeRealtime();
+      if (appStateHandle) {
+        appStateHandle.then((h: any) => h.remove());
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [currentUser?.id]);
 
   // Sync Dark Mode with DOM, Meta Theme Color, and Native Status Bar
   useEffect(() => {
@@ -449,6 +494,12 @@ export function App() {
 
   const handleUpdateCategoryBudget = async (categoryId: string, limit: number | undefined) => {
     await db.categories.update(categoryId, { budgetLimit: limit });
+    if (currentUser?.id) {
+      const updated = await db.categories.get(categoryId);
+      if (updated) {
+        syncService.pushCategory(updated, currentUser.id);
+      }
+    }
     showToast(
       language === 'id' ? 'Batas anggaran kategori disimpan!' : 'Category budget limit saved!',
       'success'
@@ -725,6 +776,9 @@ export function App() {
         t={t}
         onDataChanged={(msg) => {
           if (msg) showToast(msg, 'success');
+          if (currentUser?.id) {
+            syncService.syncAll(currentUser.id);
+          }
         }}
       />
 
@@ -742,6 +796,7 @@ export function App() {
         onOpenAuth={() => navigate('/auth')}
         onLogout={async () => {
           await authService.logout();
+          await syncService.resetLocalDataToDefaults();
           setCurrentUser(null);
           showToast(language === 'id' ? 'Anda telah keluar dari akun.' : 'You have been signed out.', 'info');
         }}

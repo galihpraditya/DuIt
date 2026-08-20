@@ -1,4 +1,4 @@
-﻿// src/services/authService.ts
+// src/services/authService.ts
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { generateId } from '../utils/formatters';
 
@@ -205,9 +205,14 @@ export const authService = {
           };
           localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
           return userProfile;
+        } else {
+          // Sesi Supabase tidak aktif / null, bersihkan active session di local
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          return null;
         }
       } catch (e) {
         console.warn('Supabase getSession error:', e);
+        return null;
       }
     }
 
@@ -246,6 +251,12 @@ export const authService = {
         await supabase.from('budgets').delete().eq('user_id', userId);
         await supabase.from('recurring_expenses').delete().eq('user_id', userId);
         await supabase.from('profiles').delete().eq('id', userId);
+
+        // Hapus auth.users secara permanen via RPC
+        const { error } = await supabase.rpc('delete_user');
+        if (error) {
+          console.warn('Gagal menghapus auth.users via RPC:', error);
+        }
 
         // Sign out dari Supabase
         await supabase.auth.signOut();

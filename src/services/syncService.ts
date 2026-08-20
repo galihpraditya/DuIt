@@ -1,11 +1,11 @@
 // src/services/syncService.ts
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { db } from '../db/database';
+import { db, DEFAULT_CATEGORIES } from '../db/database';
 import type { Category, Transaction, Budget, RecurringExpense } from '../types';
 
 export const syncService = {
   /**
-   * Menyelaraskan seluruh data lokal dengan Supabase Cloud saat login
+   * Menyelaraskan seluruh data lokal dengan Supabase Cloud
    */
   async syncAll(userId: string): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !userId) {
@@ -33,10 +33,9 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Kategori
+   * Sinkronisasi Kategori Dua Arah
    */
   async syncCategories(userId: string) {
-    // Tarik data dari Cloud
     const { data: cloudCats, error } = await supabase
       .from('categories')
       .select('*')
@@ -47,7 +46,9 @@ export const syncService = {
     const localCats = await db.categories.toArray();
 
     if (cloudCats && cloudCats.length > 0) {
-      // Masukkan kategori dari cloud ke local Dexie
+      const cloudIds = new Set(cloudCats.map((c) => c.id));
+      
+      // Update/Insert kategori dari cloud ke local Dexie
       for (const cc of cloudCats) {
         const catObj: Category = {
           id: cc.id,
@@ -60,8 +61,15 @@ export const syncService = {
         };
         await db.categories.put(catObj);
       }
+
+      // Hapus kategori lokal kustom yang sudah tidak ada di cloud
+      for (const localCat of localCats) {
+        if (!cloudIds.has(localCat.id) && !localCat.isDefault) {
+          await db.categories.delete(localCat.id);
+        }
+      }
     } else if (localCats.length > 0) {
-      // Jika cloud kosong, upload data local ke cloud
+      // Jika cloud masih kosong (user baru), upload data default lokal ke cloud
       const payload = localCats.map((cat) => ({
         id: cat.id,
         user_id: userId,
@@ -77,7 +85,7 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Transaksi
+   * Sinkronisasi Transaksi Dua Arah (Reconciliation)
    */
   async syncTransactions(userId: string) {
     const { data: cloudTxs, error } = await supabase
@@ -88,8 +96,10 @@ export const syncService = {
     if (error) throw error;
 
     const localTxs = await db.transactions.toArray();
+    const cloudIds = new Set((cloudTxs || []).map((t) => t.id));
 
     if (cloudTxs && cloudTxs.length > 0) {
+      // 1. Simpan/perbarui data dari cloud ke lokal
       for (const ctx of cloudTxs) {
         const txObj: Transaction = {
           id: ctx.id,
@@ -103,14 +113,16 @@ export const syncService = {
         };
         await db.transactions.put(txObj);
       }
-    }
 
-    // Push local-only transactions ke cloud
-    const cloudIds = new Set((cloudTxs || []).map((t) => t.id));
-    const missingInCloud = localTxs.filter((t) => !cloudIds.has(t.id));
-
-    if (missingInCloud.length > 0) {
-      const payload = missingInCloud.map((tx) => ({
+      // 2. Hapus transaksi lokal yang sudah dihapus di cloud
+      for (const localTx of localTxs) {
+        if (!cloudIds.has(localTx.id)) {
+          await db.transactions.delete(localTx.id);
+        }
+      }
+    } else if (localTxs.length > 0) {
+      // Jika cloud masih kosong, unggah transaksi offline lokal pertama kali
+      const payload = localTxs.map((tx) => ({
         id: tx.id,
         user_id: userId,
         amount: tx.amount,
@@ -139,6 +151,7 @@ export const syncService = {
     const localBudgets = await db.budgets.toArray();
 
     if (cloudBudgets && cloudBudgets.length > 0) {
+      const cloudIds = new Set(cloudBudgets.map((b) => b.id));
       for (const cb of cloudBudgets) {
         const bObj: Budget = {
           id: cb.id,
@@ -147,6 +160,12 @@ export const syncService = {
           month: cb.month,
         };
         await db.budgets.put(bObj);
+      }
+
+      for (const lb of localBudgets) {
+        if (!cloudIds.has(lb.id)) {
+          await db.budgets.delete(lb.id);
+        }
       }
     } else if (localBudgets.length > 0) {
       const payload = localBudgets.map((b) => ({
@@ -174,6 +193,7 @@ export const syncService = {
     const localRec = await db.recurringExpenses.toArray();
 
     if (cloudRec && cloudRec.length > 0) {
+      const cloudIds = new Set(cloudRec.map((r) => r.id));
       for (const cr of cloudRec) {
         const rObj: RecurringExpense = {
           id: cr.id,
@@ -186,6 +206,12 @@ export const syncService = {
           notes: cr.notes || undefined,
         };
         await db.recurringExpenses.put(rObj);
+      }
+
+      for (const lr of localRec) {
+        if (!cloudIds.has(lr.id)) {
+          await db.recurringExpenses.delete(lr.id);
+        }
       }
     } else if (localRec.length > 0) {
       const payload = localRec.map((r) => ({
@@ -201,6 +227,44 @@ export const syncService = {
       }));
       await supabase.from('recurring_expenses').upsert(payload);
     }
+  },
+
+  /**
+   * Langganan Real-Time WebSocket Supabase
+   * Otomatis sinkron saat ada perubahan data di device lain
+   */
+  subscribeToRealtime(userId: string, onDataChanged: () => void) {
+    if (!isSupabaseConfigured || !userId) {
+      return () => {};
+    }
+
+    const channel = supabase
+      .channel(`duit-realtime-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` },
+        () => onDataChanged()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${userId}` },
+        () => onDataChanged()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'budgets', filter: `user_id=eq.${userId}` },
+        () => onDataChanged()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recurring_expenses', filter: `user_id=eq.${userId}` },
+        () => onDataChanged()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   /**
@@ -269,4 +333,17 @@ export const syncService = {
       console.warn('deleteCategory error:', e);
     }
   },
+
+  /**
+   * Reset data lokal ke kondisi awal (dipakai saat logout)
+   */
+  async resetLocalDataToDefaults() {
+    await db.transaction('rw', db.transactions, db.categories, db.budgets, db.recurringExpenses, async () => {
+      await db.transactions.clear();
+      await db.budgets.clear();
+      await db.recurringExpenses.clear();
+      await db.categories.clear();
+      await db.categories.bulkPut(DEFAULT_CATEGORIES);
+    });
+  }
 };

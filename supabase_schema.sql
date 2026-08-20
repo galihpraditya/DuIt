@@ -125,3 +125,16 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ------------------------------------------------------------------------------
+-- FUNGSI UNTUK MENGHAPUS AKUN (DIPANGGIL VIA RPC DARI APLIKASI)
+-- ------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION delete_user()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  -- Menghapus akun user yang memanggil fungsi ini dari auth.users
+  -- Tabel profiles dan data lain akan otomatis terhapus karena ON DELETE CASCADE
+  DELETE FROM auth.users WHERE id = auth.uid();
+$$;
