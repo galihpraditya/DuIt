@@ -34,3 +34,10 @@ android/.gradle/
 *.njsproj
 *.sln
 *.sw?
+
+# Agent & AI configs/skills
+.agents/
+.gemini/
+__pycache__/
+*.pyc
+
