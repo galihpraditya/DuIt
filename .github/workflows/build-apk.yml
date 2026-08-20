@@ -1,10 +1,10 @@
-name: Build and Release Android APK
+﻿name: Build and Release Android APK
 
 on:
   push:
     tags:
-      - 'v*' # Memicu build otomatis saat Anda push git tag seperti v1.0.0, v1.0.1, dst.
-  workflow_dispatch: # Memungkinkan trigger manual dari tab Actions di GitHub
+      - 'v*' # Memicu rilis saat push tag seperti v1.0.0
+  workflow_dispatch: # Memungkinkan klik tombol "Run workflow" manual di GitHub
 
 jobs:
   build-android:
@@ -49,11 +49,20 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Rename APK for Release
+      - name: Prepare APK File
         run: |
           mkdir -p release-output
           cp android/app/build/outputs/apk/release/app-release-unsigned.apk release-output/DuIt-Wallet-${{ github.ref_name || 'latest' }}.apk
 
+      # Upload artifact agar bisa diunduh langsung dari halaman Actions
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuIt-Android-APK
+          path: release-output/*.apk
+          retention-days: 14
+
+      # Publikasikan ke halaman GitHub Releases jika dipicu oleh Git Tag
       - name: Create GitHub Release & Upload APK
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -61,12 +70,13 @@ jobs:
           files: release-output/DuIt-Wallet-*.apk
           name: DuIt Wallet ${{ github.ref_name }}
           body: |
-            ## 🚀 DuIt Expense Tracker - ${{ github.ref_name }}
+            ## DuIt Expense Tracker - ${{ github.ref_name }}
             
             Versi terbaru aplikasi DuIt dengan sinkronisasi cloud real-time dan analitik finansial.
             
-            ### 📥 Unduh & Pasang:
-            - Unduh file `DuIt-Wallet-${{ github.ref_name }}.apk` di bawah dan pasang di ponsel Android Anda.
+            ### Cara Pasang di Android:
+            1. Unduh file `DuIt-Wallet-${{ github.ref_name }}.apk` di bawah.
+            2. Buka file di perangkat Android Anda dan pilih Install.
           draft: false
           prerelease: false
         env:
