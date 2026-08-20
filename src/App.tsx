@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+﻿import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDefaultData, DEFAULT_CATEGORIES } from './db/database';
@@ -623,6 +623,7 @@ export function App() {
             {/* Quick Presets Bar */}
             <QuickPresets
               categories={categories}
+              transactions={transactions}
               onSelectPreset={handleSelectQuickPreset}
               lang={language}
               t={t}
@@ -778,3 +779,5 @@ export function App() {
 }
 
 export default App;
+
+

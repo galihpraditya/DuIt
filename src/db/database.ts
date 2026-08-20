@@ -1,6 +1,5 @@
-import Dexie, { type Table } from 'dexie';
+﻿import Dexie, { type Table } from 'dexie';
 import type { Category, Transaction, Budget, RecurringExpense } from '../types';
-import { subDays, format } from 'date-fns';
 
 export class WalletDatabase extends Dexie {
   categories!: Table<Category, string>;
@@ -33,131 +32,26 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 export async function initializeDefaultData() {
+  // Initialize default base categories if empty
   const categoryCount = await db.categories.count();
   if (categoryCount === 0) {
     await db.categories.bulkPut(DEFAULT_CATEGORIES);
+  }
 
-    // Add realistic seed transactions over the past 30 days for rich initial UI preview
-    const now = new Date();
-    const seedTransactions: Transaction[] = [
-      {
-        id: 'tx-1',
-        amount: 35000,
-        date: format(now, "yyyy-MM-dd'T'12:30:00"),
-        categoryId: 'cat-food',
-        notes: 'Makan siang Nasi Padang + Es Teh',
-        paymentMethod: 'QRIS / E-Wallet',
-        createdAt: now.toISOString()
-      },
-      {
-        id: 'tx-2',
-        amount: 50000,
-        date: format(now, "yyyy-MM-dd'T'08:15:00"),
-        categoryId: 'cat-transport',
-        notes: 'Isi Bensin Pertamax',
-        paymentMethod: 'Tunai',
-        createdAt: now.toISOString()
-      },
-      {
-        id: 'tx-3',
-        amount: 120000,
-        date: format(subDays(now, 1), "yyyy-MM-dd'T'19:45:00"),
-        categoryId: 'cat-shopping',
-        notes: 'Belanja sabun & detergen di minimarket',
-        paymentMethod: 'Kartu Debit',
-        createdAt: subDays(now, 1).toISOString()
-      },
-      {
-        id: 'tx-4',
-        amount: 45000,
-        date: format(subDays(now, 1), "yyyy-MM-dd'T'13:00:00"),
-        categoryId: 'cat-food',
-        notes: 'Kopi & Croissant sore',
-        paymentMethod: 'E-Wallet',
-        createdAt: subDays(now, 1).toISOString()
-      },
-      {
-        id: 'tx-5',
-        amount: 350000,
-        date: format(subDays(now, 3), "yyyy-MM-dd'T'10:00:00"),
-        categoryId: 'cat-bills',
-        notes: 'Token Listrik PLN & Tagihan Air',
-        paymentMethod: 'Transfer Bank',
-        createdAt: subDays(now, 3).toISOString()
-      },
-      {
-        id: 'tx-6',
-        amount: 85000,
-        date: format(subDays(now, 4), "yyyy-MM-dd'T'20:15:00"),
-        categoryId: 'cat-entertainment',
-        notes: 'Tiket Nonton Bioskop XXI',
-        paymentMethod: 'E-Wallet',
-        createdAt: subDays(now, 4).toISOString()
-      },
-      {
-        id: 'tx-7',
-        amount: 150000,
-        date: format(subDays(now, 6), "yyyy-MM-dd'T'15:30:00"),
-        categoryId: 'cat-health',
-        notes: 'Vitamin C & Suplemen',
-        paymentMethod: 'QRIS / E-Wallet',
-        createdAt: subDays(now, 6).toISOString()
-      },
-      {
-        id: 'tx-8',
-        amount: 180000,
-        date: format(subDays(now, 9), "yyyy-MM-dd'T'11:00:00"),
-        categoryId: 'cat-education',
-        notes: 'Buku Pemrograman & Desain',
-        paymentMethod: 'Transfer Bank',
-        createdAt: subDays(now, 9).toISOString()
-      },
-      {
-        id: 'tx-9',
-        amount: 65000,
-        date: format(subDays(now, 12), "yyyy-MM-dd'T'18:20:00"),
-        categoryId: 'cat-food',
-        notes: 'Makan malam Sushi',
-        paymentMethod: 'Kartu Debit',
-        createdAt: subDays(now, 12).toISOString()
-      },
-      {
-        id: 'tx-10',
-        amount: 250000,
-        date: format(subDays(now, 15), "yyyy-MM-dd'T'09:00:00"),
-        categoryId: 'cat-shopping',
-        notes: 'Beli Kemeja & Kaos Polos',
-        paymentMethod: 'E-Wallet',
-        createdAt: subDays(now, 15).toISOString()
-      },
-    ];
+  // Clean up any legacy dummy seed items (tx-1 ... tx-10, rec-1, rec-2) if they were inserted previously
+  const legacySeedTxIds = ['tx-1', 'tx-2', 'tx-3', 'tx-4', 'tx-5', 'tx-6', 'tx-7', 'tx-8', 'tx-9', 'tx-10'];
+  for (const id of legacySeedTxIds) {
+    const existing = await db.transactions.get(id);
+    if (existing) {
+      await db.transactions.delete(id);
+    }
+  }
 
-    await db.transactions.bulkPut(seedTransactions);
-
-    // Initial Recurring Expenses
-    const seedRecurring: RecurringExpense[] = [
-      {
-        id: 'rec-1',
-        title: 'Langganan Netflix & Spotify',
-        amount: 186000,
-        categoryId: 'cat-entertainment',
-        frequency: 'monthly',
-        nextDueDate: format(now, 'yyyy-MM-28'),
-        isActive: true,
-        notes: 'Auto debit tanggal 28 tiap bulan'
-      },
-      {
-        id: 'rec-2',
-        title: 'Tagihan Internet Wi-Fi Rumah',
-        amount: 325000,
-        categoryId: 'cat-bills',
-        frequency: 'monthly',
-        nextDueDate: format(now, 'yyyy-MM-20'),
-        isActive: true,
-        notes: 'Indihome / Biznet'
-      }
-    ];
-
-    await db.recurringExpenses.bulkPut(seedRecurring);
+  const legacySeedRecIds = ['rec-1', 'rec-2'];
+  for (const id of legacySeedRecIds) {
+    const existing = await db.recurringExpenses.get(id);
+    if (existing) {
+      await db.recurringExpenses.delete(id);
+    }
   }
 }
