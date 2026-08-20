@@ -1,4 +1,4 @@
-export type Language = 'id' | 'en';
+﻿export type Language = 'id' | 'en';
 
 export interface Translations {
   appName: string;
@@ -185,6 +185,12 @@ export interface Translations {
   authErrorWeakPassword: string;
   authSuccessLogin: string;
   authSuccessRegister: string;
+  authDeleteAccount: string;
+  authDeleteAccountDesc: string;
+  authDeleteAccountConfirmTitle: string;
+  authDeleteAccountConfirmMsg: string;
+  authDeleteAccountBtn: string;
+  authDeleteAccountSuccess: string;
 
   // Excel & Backup Center
   excelCenterTitle: string;
@@ -413,6 +419,12 @@ export const translations: Record<Language, Translations> = {
     authErrorWeakPassword: 'Kata sandi harus minimal 6 karakter.',
     authSuccessLogin: 'Berhasil masuk!',
     authSuccessRegister: 'Akun berhasil dibuat dan Anda telah masuk.',
+    authDeleteAccount: 'Hapus Akun',
+    authDeleteAccountDesc: 'Hapus akun Anda secara permanen beserta seluruh data yang tersinkronisasi di cloud.',
+    authDeleteAccountConfirmTitle: 'Hapus Akun Permanen?',
+    authDeleteAccountConfirmMsg: 'Peringatan: Tindakan ini tidak dapat dibatalkan. Seluruh data akun, transaksi, dan kategori di cloud akan dihapus secara permanen. Lanjutkan?',
+    authDeleteAccountBtn: 'Hapus Akun Permanen',
+    authDeleteAccountSuccess: 'Akun dan seluruh data berhasil dihapus.',
 
     // Excel & Backup Center
     excelCenterTitle: 'Pusat Data & Excel',
@@ -620,7 +632,7 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset All Application Data',
     resetConfirmMsg: 'Warning: This will permanently wipe all your expense records and categories. Proceed?',
     resetConfirmBtn: 'Reset All Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0 • Offline-First PWA',
+    versionLabel: 'DuIt Expense Tracker v1.2.0 â€¢ Offline-First PWA',
 
     // Auth
     authSignIn: 'Sign In',
@@ -639,6 +651,12 @@ export const translations: Record<Language, Translations> = {
     authErrorWeakPassword: 'Password must be at least 6 characters.',
     authSuccessLogin: 'Signed in successfully!',
     authSuccessRegister: 'Account created and signed in successfully.',
+    authDeleteAccount: 'Delete Account',
+    authDeleteAccountDesc: 'Permanently delete your account and all synchronized cloud data.',
+    authDeleteAccountConfirmTitle: 'Permanently Delete Account?',
+    authDeleteAccountConfirmMsg: 'Warning: This action cannot be undone. All your account data, transactions, and categories in the cloud will be permanently deleted. Proceed?',
+    authDeleteAccountBtn: 'Delete Account Permanently',
+    authDeleteAccountSuccess: 'Account and all data successfully deleted.',
 
     // Excel & Backup Center
     excelCenterTitle: 'Data & Excel Center',
@@ -680,3 +698,4 @@ export const translations: Record<Language, Translations> = {
     backupFailedMsg: 'Failed to generate backup.',
   },
 };
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   Settings,
   X,
@@ -9,11 +9,14 @@ import {
   Trash2,
   Check,
   Smartphone,
+  User,
+  LogOut,
+  UserX,
+  ChevronRight,
 } from 'lucide-react';
 import type { Language, Translations } from '../../constants/translations';
 import { ConfirmModal } from '../common/ConfirmModal';
 import type { UserProfile } from '../../services/authService';
-import { User, LogOut } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ interface SettingsModalProps {
   currentUser: UserProfile | null;
   onOpenAuth: () => void;
   onLogout: () => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
   t: Translations;
 }
 
@@ -42,10 +46,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentUser,
   onOpenAuth,
   onLogout,
+  onDeleteAccount,
   t,
 }) => {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -89,14 +95,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <div className="truncate">
                       <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {currentUser.displayName || currentUser.email}
+                        {currentUser.displayName || 'Pengguna'}
                       </p>
-                      <p className="text-[10px] text-slate-400 truncate">{currentUser.email}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{currentUser.email}</p>
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setIsLogoutConfirmOpen(true)}
-                    className="shrink-0 p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors text-slate-600 dark:text-slate-300 shrink-0"
                     title={t.authLogout}
                   >
                     <LogOut className="w-4 h-4" />
@@ -104,19 +111,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={() => {
                     onClose();
                     onOpenAuth();
                   }}
-                  className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center space-x-3 transition-colors text-left"
+                  className="w-full p-3.5 rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 flex items-center justify-between transition-colors group"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4" />
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-emerald-700 dark:text-emerald-300">
+                        {t.authSignIn} / {t.authSignUp}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {t.authLoginToSync}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{t.authSignIn}</p>
-                    <p className="text-[11px] text-slate-400">{t.authLoginToSync}</p>
-                  </div>
+                  <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               )}
             </div>
@@ -138,7 +153,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center space-x-2">
-                    <span className="text-base">🇮🇩</span>
                     <span>Bahasa Indonesia</span>
                   </div>
                   {language === 'id' && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
@@ -154,7 +168,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center space-x-2">
-                    <span className="text-base">🇬🇧</span>
                     <span>English</span>
                   </div>
                   {language === 'en' && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
@@ -236,28 +249,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <p className="text-[11px] text-slate-400">{t.dataManagementDesc}</p>
                   </div>
                 </div>
-                <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
-            {/* Section 4: Danger Zone / Reset */}
+            {/* Section 4: Danger Zone / Reset & Delete Account */}
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <label className="font-bold text-rose-600 dark:text-rose-400 flex items-center space-x-1.5 text-xs">
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{t.dangerZoneSection}</span>
               </label>
-              <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 space-y-2">
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {t.resetAllDataDesc}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsResetConfirmOpen(true)}
-                  className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-sm transition-colors flex items-center space-x-1.5"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{t.resetAllData}</span>
-                </button>
+              <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 space-y-3">
+                <div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed mb-2">
+                    {t.resetAllDataDesc}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsResetConfirmOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-sm transition-colors flex items-center space-x-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{t.resetAllData}</span>
+                  </button>
+                </div>
+
+                {currentUser && (
+                  <div className="pt-2.5 border-t border-rose-200/80 dark:border-rose-900/40">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed mb-2">
+                      {t.authDeleteAccountDesc}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteAccountConfirmOpen(true)}
+                      className="px-3 py-2 rounded-xl bg-transparent hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-800 font-semibold text-xs transition-colors flex items-center space-x-1.5"
+                    >
+                      <UserX className="w-3.5 h-3.5" />
+                      <span>{t.authDeleteAccount}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -299,6 +330,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           await onLogout();
         }}
         onCancel={() => setIsLogoutConfirmOpen(false)}
+      />
+
+      {/* Confirmation Modal for Delete Account */}
+      <ConfirmModal
+        isOpen={isDeleteAccountConfirmOpen}
+        title={t.authDeleteAccountConfirmTitle}
+        message={t.authDeleteAccountConfirmMsg}
+        confirmText={t.authDeleteAccountBtn}
+        cancelText={t.cancelBtn}
+        isDanger={true}
+        onConfirm={async () => {
+          setIsDeleteAccountConfirmOpen(false);
+          onClose();
+          await onDeleteAccount();
+        }}
+        onCancel={() => setIsDeleteAccountConfirmOpen(false)}
       />
     </>
   );

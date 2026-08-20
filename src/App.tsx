@@ -745,6 +745,16 @@ export function App() {
           setCurrentUser(null);
           showToast(language === 'id' ? 'Anda telah keluar dari akun.' : 'You have been signed out.', 'info');
         }}
+        onDeleteAccount={async () => {
+          if (currentUser?.id) {
+            await authService.deleteAccount(currentUser.id);
+          } else {
+            await authService.deleteAccount();
+          }
+          await handleResetAllData();
+          setCurrentUser(null);
+          showToast(t.authDeleteAccountSuccess || 'Akun berhasil dihapus.', 'info');
+        }}
         t={t}
       />
 
@@ -779,5 +789,7 @@ export function App() {
 }
 
 export default App;
+
+
 
 
