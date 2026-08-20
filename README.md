@@ -1,74 +1,131 @@
-# DuIt - Smart Expense Tracker 💸
+﻿# DuIt - Personal Expense Tracker & Financial Analytics
 
-DuIt adalah aplikasi pencatat pengeluaran (*expense tracker*) yang modern, ringan, dan **Offline-First**. Dibangun dengan arsitektur PWA (Progressive Web App) dan Capacitor, aplikasi ini bisa berjalan di Web, di-install di Desktop/Mobile Browser, maupun di-*build* menjadi aplikasi native Android.
+DuIt is a modern, responsive, and privacy-conscious personal expense tracker and financial analytics application. Built with a local-first architecture using Progressive Web App (PWA) standards and Capacitor, DuIt runs seamlessly on the web, can be installed as a standalone desktop/mobile web app, and compiles into a native Android APK.
 
-## Fitur Utama ✨
-- **Pencatatan Pengeluaran**: Catat pengeluaran harian dengan antarmuka yang bersih dan intuitif.
-- **Kategori Dinamis**: Tambah, ubah, dan hapus kategori pengeluaran sesuai dengan gaya hidup Anda.
-- **Budgeting**: Atur batas anggaran bulanan per kategori dan pantau progresnya.
-- **Analitik Visual**: Pantau tren pengeluaran bulanan dan mingguan dengan grafik yang interaktif.
-- **Langganan & Tagihan Berulang**: Kelola langganan bulanan agar tidak ada tagihan yang terlewat.
-- **Impor & Ekspor Data (Excel/JSON)**: Kendali penuh atas data Anda; ekspor ke `.xlsx` atau `.json` untuk di-backup.
+---
 
-## Konfigurasi Database & Deployment 🗄️
+## Key Features
 
-**DuIt menggunakan pendekatan Offline-First.** Tidak ada *backend* server atau *database* eksternal (seperti MySQL, PostgreSQL, Firebase, dll) yang perlu Anda *deploy*.
+- **Expense Management**: Log daily income and expenses with detailed metadata (categories, payment methods, tags, and notes).
+- **Dynamic Category Management**: Customize expense categories with custom icons, colors, and monthly budget limits.
+- **Budgeting & Monitoring**: Set monthly spending targets per category and track real-time utilization progress.
+- **Visual Analytics**: Interactive breakdowns, expense distributions, and monthly spending comparisons powered by Recharts.
+- **Recurring Expenses**: Manage periodic subscriptions and utility bills with automated next-due tracking.
+- **Data Portability**: Full control over your data with direct import and export capabilities for Excel (.xlsx) and JSON formats.
+- **Hybrid Multi-Device Sync**: Works offline out-of-the-box using IndexedDB, with real-time cloud synchronization across Web and Android via Supabase.
 
-Semua data pengeluaran dan pengaturan pengguna disimpan secara lokal di dalam memori perangkat pengguna melalui **IndexedDB** (menggunakan library `Dexie.js`).
+---
 
-**Keuntungan pendekatan ini:**
-1. **Privasi Maksimal**: Data finansial pengguna 100% tersimpan di perangkat mereka sendiri, tidak ada data yang dikirim ke server pihak ketiga.
-2. **Cepat & Hemat Kuota**: Tidak ada *loading* untuk mengambil data dari internet.
-3. **Deployment Bebas Ribet**: Untuk mempublikasikan aplikasi ini, Anda hanya perlu men-*deploy* file *frontend* statisnya saja (folder `dist/`). Anda **TIDAK PERLU** men-setup atau membayar hosting untuk *database*.
+## Tech Stack
 
-## Cara Menjalankan di Lokal (Development) 💻
+- **Frontend Core**: React 19, TypeScript, Vite
+- **Styling**: Tailwind CSS, Framer Motion
+- **Local Storage**: Dexie.js (IndexedDB wrapper)
+- **Cloud Backend & Authentication**: Supabase (PostgreSQL, Row Level Security, Auth)
+- **Mobile Runtime**: Capacitor (Android native bridge)
+- **Data Visualization**: Recharts, Lucide Icons
+- **Data Processing**: SheetJS (xlsx), date-fns
 
-Pastikan Anda telah menginstal Node.js versi 18+.
+---
 
-1. Install dependensi:
+## Architecture & Data Storage
+
+DuIt operates on a **Local-First, Cloud-Synced** model:
+
+1. **Offline-First Storage**: All transactions, categories, budgets, and recurring expenses are stored locally on the device using IndexedDB (`Dexie.js`). The app remains fast, responsive, and fully functional without an internet connection.
+2. **Optional Cloud Synchronization**: When authenticated through Supabase, data is synchronized securely with a remote PostgreSQL database protected by **Row Level Security (RLS)**, ensuring data isolation per authenticated user.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm 9 or higher
+- Android Studio (optional, for local Android APK compilation)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/DuIt.git
+   cd DuIt
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
-2. Jalankan development server:
+
+3. Configure environment variables (optional for cloud sync):
+   Copy `.env.example` to `.env` and provide your Supabase credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env`:
+   ```env
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   ```
+
+4. Start the local development server:
    ```bash
    npm run dev
    ```
-3. Buka browser di `http://localhost:5173/`.
 
-## Cara Deployment Frontend 🚀
+5. Access the application in your browser at `http://localhost:5173`.
 
-Karena ini adalah aplikasi klien murni (*static site*), Anda dapat men-deploy-nya ke layanan hosting statis manapun secara gratis.
+---
 
-### Vercel / Netlify
-1. *Push* repositori ini ke GitHub.
-2. Buka dashboard Vercel / Netlify, buat proyek baru (New Project).
-3. Import repositori GitHub ini.
-4. *Framework preset* akan mendeteksi **Vite**.
-5. *Build command*: `npm run build`
-6. *Output directory*: `dist`
-7. Klik Deploy. Selesai!
+## Deployment
 
-### GitHub Pages
-Jika menggunakan GitHub Pages, Anda harus mengubah konfigurasi `base` pada `vite.config.ts`:
-```typescript
-export default defineConfig({
-  base: '/nama-repo-github-anda/',
-  // ...
-})
-```
-Lalu jalankan action deployment bawaan GitHub.
+### Web Deployment (Vercel)
 
-## Build ke Android (APK) 📱
+DuIt is preconfigured for single-page application (SPA) deployment on Vercel:
 
-Aplikasi ini menggunakan Capacitor untuk *wrapper* native Android. Pastikan Anda telah menginstal Android Studio.
+1. Push your repository to GitHub.
+2. Import the project in the [Vercel Dashboard](https://vercel.com).
+3. Under **Project Settings > Environment Variables**, define `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. Deploy. The included `vercel.json` configuration handles SPA routing rewrites automatically.
 
-1. Jalankan proses *build* lokal:
+### Automated Android APK Builds (GitHub Actions)
+
+A GitHub Actions workflow is included at `.github/workflows/build-apk.yml` to compile and release Android APKs automatically:
+
+1. Navigate to **Repository Settings > Secrets and variables > Actions** on GitHub.
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets.
+3. Push a version tag to trigger an automated release:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+4. The compiled release APK will be attached directly to the GitHub Releases page.
+
+### Manual Android Build (Local)
+
+1. Build the web assets and sync with Capacitor:
    ```bash
    npm run cap:build
    ```
-2. Buka proyek di Android Studio:
+
+2. Open the Android project in Android Studio:
    ```bash
    npm run cap:open
    ```
-3. Di dalam Android Studio, tunggu Gradle Sync selesai.
-4. Pergi ke **Build > Build Bundle(s) / APK(s) > Build APK(s)** untuk membuat APK.
+
+3. In Android Studio, select **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+
+---
+
+## Security
+
+- **Row Level Security (RLS)**: Database policies enforce that users can only view, insert, update, and delete their own records (`auth.uid() = user_id`).
+- **Encrypted Transmission**: All cloud communications use TLS/HTTPS encryption (`android:usesCleartextTraffic="false"`).
+- **Client Security**: Secret service role keys are excluded from the client application. Only public anonymous keys are used in conjunction with RLS policies.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
