@@ -201,6 +201,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
   existingCategories.forEach((c) => categoryMap.set(c.name.toLowerCase(), c.id));
 
   const newTransactions: Transaction[] = [];
+  const newCategories: Category[] = [];
 
   for (const row of validRows) {
     let catId = categoryMap.get(row.categoryName.toLowerCase());
@@ -215,6 +216,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
         createdAt: new Date().toISOString(),
       };
       await db.categories.add(newCat);
+      newCategories.push(newCat);
       categoryMap.set(row.categoryName.toLowerCase(), newCat.id);
       catId = newCat.id;
     }
@@ -235,5 +237,50 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
   }
 
   await db.transactions.bulkAdd(newTransactions);
+
+  // Sync ke cloud secara otomatis agar tidak dihapus oleh syncAll()
+  import('./supabaseClient').then(async ({ supabase, isSupabaseConfigured }) => {
+    if (isSupabaseConfigured) {
+      import('./authService').then(async ({ authService }) => {
+        const user = await authService.getCurrentUser();
+        if (user?.id) {
+          try {
+            // Upload kategori baru
+            if (newCategories.length > 0) {
+              const catPayload = newCategories.map(c => ({
+                id: c.id,
+                user_id: user.id,
+                name: c.name,
+                icon: c.icon,
+                color: c.color,
+                budget_limit: 0,
+                is_default: false,
+                created_at: c.createdAt,
+              }));
+              await supabase.from('categories').upsert(catPayload);
+            }
+
+            // Upload transaksi baru
+            if (newTransactions.length > 0) {
+              const txPayload = newTransactions.map(tx => ({
+                id: tx.id,
+                user_id: user.id,
+                amount: tx.amount,
+                date: tx.date,
+                category_id: tx.categoryId,
+                notes: tx.notes || null,
+                payment_method: tx.paymentMethod || null,
+                created_at: tx.createdAt,
+              }));
+              await supabase.from('transactions').upsert(txPayload);
+            }
+          } catch (e) {
+            console.warn('Gagal mengunggah data hasil import:', e);
+          }
+        }
+      });
+    }
+  });
+
   return newTransactions.length;
 }
