@@ -30,15 +30,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-30 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-sm pt-safe">
+    <header className="sticky top-0 z-30 pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative flex items-center justify-between h-16">
+        {/* Floating Bar — efek kaca lewat border & shadow */}
+        <div className="relative flex items-center justify-between h-14 sm:h-16 mt-3 px-3 sm:px-4 rounded-2xl glass-panel">
           {/* Logo & Brand: "DuIt" with serif "It" */}
           <div
             className="flex items-center space-x-2.5 cursor-pointer group select-none"
             onClick={() => onSelectTab('transactions')}
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center shadow-md shadow-emerald-500/25 text-white group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white group-hover:bg-emerald-700 transition-colors">
               <Wallet className="w-5 h-5" />
             </div>
             <div className="flex items-baseline">
@@ -49,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Desktop Navigation Links - Centered Absolutely */}
-          <nav className="hidden md:flex items-center space-x-1 absolute left-1/2 -translate-x-1/2 bg-slate-100/70 dark:bg-slate-900/60 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-md">
+          <nav className="hidden md:flex items-center space-x-1 absolute left-1/2 -translate-x-1/2 bg-slate-900/5 dark:bg-white/10 p-1 rounded-xl">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -82,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label={currentUser ? (currentUser.displayName || currentUser.email) : t.authSignIn}
             >
               {currentUser ? (
-                <div className="w-5 h-5 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-full flex items-center justify-center text-[10px] font-extrabold shadow-sm">
+                <div className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-extrabold">
                   {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'U')}
                 </div>
               ) : (
@@ -103,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Primary Action Button (Tambah Pengeluaran) */}
             <button
               onClick={onOpenNewTransaction}
-              className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors active:scale-[0.98]"
               title={`${t.recordNew} (N)`}
             >
               <Plus className="w-4 h-4 stroke-[3]" />

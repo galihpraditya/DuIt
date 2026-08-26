@@ -1,4 +1,4 @@
-﻿export type Language = 'id' | 'en';
+export type Language = 'id' | 'en';
 
 export interface Translations {
   appName: string;
@@ -66,6 +66,9 @@ export interface Translations {
   paymentMethodLabel: string;
   notesLabel: string;
   notesPlaceholder: string;
+  detailSectionLabel: string;
+  todayQuickLabel: string;
+  yesterdayQuickLabel: string;
   saveBtn: string;
   updateBtn: string;
   savingBtn: string;
@@ -299,6 +302,9 @@ export const translations: Record<Language, Translations> = {
     paymentMethodLabel: 'Metode Pembayaran',
     notesLabel: 'Catatan / Keterangan (Opsional)',
     notesPlaceholder: 'Contoh: Makan siang Nasi Padang...',
+    detailSectionLabel: 'Detail',
+    todayQuickLabel: 'Hari Ini',
+    yesterdayQuickLabel: 'Kemarin',
     saveBtn: 'Simpan Transaksi',
     updateBtn: 'Perbarui Pengeluaran',
     savingBtn: 'Menyimpan...',
@@ -531,6 +537,9 @@ export const translations: Record<Language, Translations> = {
     paymentMethodLabel: 'Payment Method',
     notesLabel: 'Notes / Description (Optional)',
     notesPlaceholder: 'Example: Lunch Padang Rice...',
+    detailSectionLabel: 'Details',
+    todayQuickLabel: 'Today',
+    yesterdayQuickLabel: 'Yesterday',
     saveBtn: 'Save Transaction',
     updateBtn: 'Update Expense',
     savingBtn: 'Saving...',

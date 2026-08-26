@@ -40,6 +40,8 @@ export default {
         'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
         'card': '0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02)',
         'elevated': '0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 8px 16px -4px rgba(0, 0, 0, 0.03)',
+        'glass': '0 12px 32px -12px rgba(15, 23, 42, 0.12)',
+        'glass-lg': '0 24px 64px -16px rgba(15, 23, 42, 0.25)',
         'glow-emerald': '0 0 25px -5px rgba(16, 185, 129, 0.35)',
         'glow-rose': '0 0 25px -5px rgba(244, 63, 94, 0.35)',
       },

@@ -1,4 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/database';
+import { Loader2 } from 'lucide-react';
 import {
   PieChart,
   Pie,
@@ -16,7 +19,6 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  DollarSign,
   PieChart as PieIcon,
   BarChart3,
   Zap,
@@ -32,18 +34,19 @@ import {
   subMonths,
   startOfYear,
   endOfYear,
-  isWithinInterval,
-  parseISO,
-  format,
+  startOfWeek,
   eachDayOfInterval,
+  eachWeekOfInterval,
   eachMonthOfInterval,
   differenceInCalendarDays,
+  parseISO,
+  format,
 } from 'date-fns';
 import { id as idLocale, enUS as enLocale } from 'date-fns/locale';
 import type { Language, Translations } from '../../constants/translations';
 
 interface AnalyticsViewProps {
-  transactions: Transaction[];
+  transactions?: Transaction[];
   categories: Category[];
   darkMode?: boolean;
   lang?: Language;
@@ -52,8 +55,43 @@ interface AnalyticsViewProps {
 
 type PeriodOption = 'today' | '7days' | '30days' | 'this_month' | 'last_month' | 'this_year' | 'custom';
 
+interface CategoryDataEntry {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  total: number;
+  count: number;
+}
+
+interface TrendDataEntry {
+  label: string;
+  total: number;
+}
+
+interface AnalyticsCalculatedData {
+  periodLabel: string;
+  currentTotal: number;
+  highestExpense: number;
+  averagePerDay: number;
+  percentageChange: number;
+  categoryData: CategoryDataEntry[];
+  trendData: TrendDataEntry[];
+  txCount: number;
+}
+
+// Parse tanggal transaksi secara toleran; kembalikan timestamp (ms) atau null jika tidak valid
+const parseTxTime = (dateStr: string): number | null => {
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d.getTime();
+  } catch {
+    return null;
+  }
+};
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
-  transactions,
+  transactions: fallbackTransactions,
   categories,
   darkMode = false,
   lang = 'id',
@@ -66,12 +104,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const locale = lang === 'en' ? enLocale : idLocale;
 
-  const categoryMap = useMemo(() => {
-    return new Map(categories.map((c) => [c.id, c]));
-  }, [categories]);
+  // In-memory cache agar navigasi antar-periode yang sudah dihitung instan 0ms
+  const cacheRef = useRef<Map<string, AnalyticsCalculatedData>>(new Map());
 
-  // Compute current date interval and previous date interval for comparison
-  const { currentInterval, previousInterval, periodLabel } = useMemo(() => {
+  // 1. Hitung Rentang Tanggal Aktif & Rentang Pembanding (Previous Interval)
+  const { currentInterval, previousInterval, periodLabel: computedPeriodLabel } = useMemo(() => {
     const now = new Date();
     let start = startOfMonth(now);
     let end = endOfMonth(now);
@@ -132,154 +169,256 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     };
   }, [selectedPeriod, customStartDate, customEndDate, t, locale]);
 
-  // Filter transactions in current and previous periods
-  const currentPeriodTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
-      try {
-        const d = parseISO(tx.date);
-        return isWithinInterval(d, currentInterval);
-      } catch {
-        return false;
+  // Batas ISO string untuk IndexedDB range query
+  const minDateISO = useMemo(() => {
+    const minD = currentInterval.start < previousInterval.start ? currentInterval.start : previousInterval.start;
+    return minD.toISOString();
+  }, [currentInterval, previousInterval]);
+
+  const maxDateISO = useMemo(() => {
+    const maxD = currentInterval.end > previousInterval.end ? currentInterval.end : previousInterval.end;
+    return maxD.toISOString();
+  }, [currentInterval, previousInterval]);
+
+  // 2. DEXIE INDEXED QUERY: Hanya ambil data transaksi di dalam rentang waktu yang diperlukan
+  const dexieQueriedTransactions = useLiveQuery(
+    () => db.transactions.where('date').between(minDateISO, maxDateISO, true, true).toArray(),
+    [minDateISO, maxDateISO]
+  );
+
+  const activeTransactions = dexieQueriedTransactions !== undefined ? dexieQueriedTransactions : fallbackTransactions || [];
+
+  const [isCalculating, setIsCalculating] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsCalculatedData | null>(null);
+
+  useEffect(() => {
+    if (dexieQueriedTransactions === undefined && !fallbackTransactions) {
+      setIsCalculating(true);
+      return;
+    }
+
+    const cacheKey = `${selectedPeriod}_${minDateISO}_${maxDateISO}_${activeTransactions.length}`;
+    if (cacheRef.current.has(cacheKey)) {
+      setAnalyticsData(cacheRef.current.get(cacheKey)!);
+      setIsCalculating(false);
+      return;
+    }
+
+    setIsCalculating(true);
+
+    const timer = setTimeout(() => {
+      const categoryMap = new Map(categories.map((c) => [c.id, c]));
+      const start = currentInterval.start;
+      const end = currentInterval.end;
+      const prevStart = previousInterval.start;
+      const prevEnd = previousInterval.end;
+      const label = computedPeriodLabel;
+
+      const startTime = start.getTime();
+      const endTime = end.getTime();
+      const prevStartTime = prevStart.getTime();
+      const prevEndTime = prevEnd.getTime();
+
+      const currentPeriodTxs: Transaction[] = [];
+      const previousPeriodTxs: Transaction[] = [];
+      const txTimes = new Map<string, number>();
+
+      for (const tx of activeTransactions) {
+        const time = parseTxTime(tx.date);
+        if (time === null) continue;
+        txTimes.set(tx.id, time);
+
+        if (time >= startTime && time <= endTime) {
+          currentPeriodTxs.push(tx);
+        }
+        if (time >= prevStartTime && time <= prevEndTime) {
+          previousPeriodTxs.push(tx);
+        }
       }
-    });
-  }, [transactions, currentInterval]);
 
-  const previousPeriodTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
-      try {
-        const d = parseISO(tx.date);
-        return isWithinInterval(d, previousInterval);
-      } catch {
-        return false;
+      // KPI Metrics
+      let currentTotal = 0;
+      let highestExpense = 0;
+      for (const tx of currentPeriodTxs) {
+        currentTotal += tx.amount;
+        if (tx.amount > highestExpense) highestExpense = tx.amount;
       }
-    });
-  }, [transactions, previousInterval]);
 
-  // KPI Metrics
-  const currentTotal = useMemo(() => {
-    return currentPeriodTransactions.reduce((acc, tx) => acc + tx.amount, 0);
-  }, [currentPeriodTransactions]);
+      let previousTotal = 0;
+      for (const tx of previousPeriodTxs) {
+        previousTotal += tx.amount;
+      }
 
-  const previousTotal = useMemo(() => {
-    return previousPeriodTransactions.reduce((acc, tx) => acc + tx.amount, 0);
-  }, [previousPeriodTransactions]);
-
-  const percentageChange = useMemo(() => {
-    if (previousTotal === 0) return currentTotal > 0 ? 100 : 0;
-    return Math.round(((currentTotal - previousTotal) / previousTotal) * 100);
-  }, [currentTotal, previousTotal]);
-
-  const highestExpense = useMemo(() => {
-    if (currentPeriodTransactions.length === 0) return 0;
-    return Math.max(...currentPeriodTransactions.map((tx) => tx.amount));
-  }, [currentPeriodTransactions]);
-
-  const averagePerDay = useMemo(() => {
-    const now = new Date();
-    let days = 1;
-
-    if (selectedPeriod === 'today') {
-      days = 1;
-    } else if (selectedPeriod === '7days') {
-      days = 7;
-    } else if (selectedPeriod === '30days') {
-      days = 30;
-    } else if (selectedPeriod === 'this_month') {
-      // Days elapsed so far this month (matching transactions view)
-      days = Math.max(1, now.getDate());
-    } else if (selectedPeriod === 'last_month') {
-      days = Math.max(1, currentInterval.end.getDate());
-    } else if (selectedPeriod === 'this_year') {
-      // Days elapsed so far this year
-      days = Math.max(1, differenceInCalendarDays(now, currentInterval.start) + 1);
-    } else if (selectedPeriod === 'custom') {
-      const effectiveEnd = currentInterval.end > now ? now : currentInterval.end;
-      if (effectiveEnd >= currentInterval.start) {
-        days = Math.max(1, differenceInCalendarDays(effectiveEnd, currentInterval.start) + 1);
+      let percentageChange = 0;
+      if (previousTotal === 0) {
+        percentageChange = currentTotal > 0 ? 100 : 0;
       } else {
-        days = Math.max(1, differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1);
+        percentageChange = Math.round(((currentTotal - previousTotal) / previousTotal) * 100);
       }
-    } else {
-      days = Math.max(1, differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1);
-    }
 
-    return Math.round(currentTotal / days);
-  }, [currentTotal, selectedPeriod, currentInterval]);
+      const now = new Date();
+      let days = 1;
+      if (selectedPeriod === 'today') {
+        days = 1;
+      } else if (selectedPeriod === '7days') {
+        days = 7;
+      } else if (selectedPeriod === '30days') {
+        days = 30;
+      } else if (selectedPeriod === 'this_month') {
+        days = Math.max(1, now.getDate());
+      } else if (selectedPeriod === 'last_month') {
+        days = Math.max(1, end.getDate());
+      } else if (selectedPeriod === 'this_year') {
+        days = Math.max(1, differenceInCalendarDays(now, start) + 1);
+      } else if (selectedPeriod === 'custom') {
+        const effectiveEnd = end > now ? now : end;
+        if (effectiveEnd >= start) {
+          days = Math.max(1, differenceInCalendarDays(effectiveEnd, start) + 1);
+        } else {
+          days = Math.max(1, differenceInCalendarDays(end, start) + 1);
+        }
+      } else {
+        days = Math.max(1, differenceInCalendarDays(end, start) + 1);
+      }
+      const averagePerDay = Math.round(currentTotal / days);
 
-  // Category Distribution Data (Donut Chart)
-  const categoryData = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; icon: string; color: string; total: number; count: number }
-    >();
-
-    currentPeriodTransactions.forEach((tx) => {
-      const cat = categoryMap.get(tx.categoryId) || {
-        id: 'other',
-        name: 'Lain-lain',
-        icon: 'CircleEllipsis',
-        color: '#64748b',
-      };
-      const existing = map.get(cat.id) || {
-        id: cat.id,
-        name: cat.name,
-        icon: cat.icon,
-        color: cat.color,
-        total: 0,
-        count: 0,
-      };
-      existing.total += tx.amount;
-      existing.count += 1;
-      map.set(cat.id, existing);
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [currentPeriodTransactions, categoryMap]);
-
-  // Time Trend Data (Bar / Area Chart)
-  const trendData = useMemo(() => {
-    if (selectedPeriod === 'this_year') {
-      const months = eachMonthOfInterval(currentInterval);
-      return months.map((m) => {
-        const monthKey = format(m, 'yyyy-MM');
-        const monthLabel = format(m, 'MMM', { locale });
-        const total = currentPeriodTransactions
-          .filter((tx) => format(parseISO(tx.date), 'yyyy-MM') === monthKey)
-          .reduce((acc, tx) => acc + tx.amount, 0);
-
-        return {
-          label: monthLabel,
-          total,
+      // Category Data
+      const catMap = new Map<string, CategoryDataEntry>();
+      for (const tx of currentPeriodTxs) {
+        const cat = categoryMap.get(tx.categoryId) || {
+          id: 'other',
+          name: 'Lain-lain',
+          icon: 'CircleEllipsis',
+          color: '#64748b',
         };
-      });
-    } else {
-      const days = eachDayOfInterval(currentInterval);
-      return days.map((d) => {
-        const dayKey = format(d, 'yyyy-MM-dd');
-        const dayLabel = format(d, 'dd MMM', { locale });
-        const total = currentPeriodTransactions
-          .filter((tx) => format(parseISO(tx.date), 'yyyy-MM-dd') === dayKey)
-          .reduce((acc, tx) => acc + tx.amount, 0);
-
-        return {
-          label: dayLabel,
-          total,
+        const existing = catMap.get(cat.id) || {
+          id: cat.id,
+          name: cat.name,
+          icon: cat.icon,
+          color: cat.color,
+          total: 0,
+          count: 0,
         };
-      });
-    }
-  }, [selectedPeriod, currentInterval, currentPeriodTransactions, locale]);
+        existing.total += tx.amount;
+        existing.count += 1;
+        catMap.set(cat.id, existing);
+      }
+      const categoryData = Array.from(catMap.values()).sort((a, b) => b.total - a.total);
+
+      // Trend Data (Dioptimasi untuk interval panjang)
+      let buckets: { key: string; label: string; total: number }[] = [];
+      const totalDays = differenceInCalendarDays(end, start) + 1;
+
+      if (selectedPeriod === 'this_year' || totalDays > 365) {
+        buckets = eachMonthOfInterval({ start, end }).map((m) => ({
+          key: format(m, 'yyyy-MM'),
+          label: format(m, 'MMM', { locale }),
+          total: 0,
+        }));
+      } else if (totalDays > 70) {
+        buckets = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 }).map((w) => ({
+          key: format(w, 'yyyy-MM-dd'),
+          label: format(w, 'dd MMM', { locale }),
+          total: 0,
+        }));
+      } else {
+        buckets = eachDayOfInterval({ start, end }).map((d) => ({
+          key: format(d, 'yyyy-MM-dd'),
+          label: format(d, 'dd MMM', { locale }),
+          total: 0,
+        }));
+      }
+
+      if (buckets.length > 0) {
+        const keyIndex = new Map<string, number>();
+        buckets.forEach((b, i) => keyIndex.set(b.key, i));
+
+        for (const tx of currentPeriodTxs) {
+          const time = txTimes.get(tx.id);
+          if (time === undefined || time < startTime || time > endTime) continue;
+
+          let key: string;
+          if (selectedPeriod === 'this_year' || totalDays > 365) {
+            key = format(time, 'yyyy-MM');
+          } else if (keyIndex.has(format(time, 'yyyy-MM-dd'))) {
+            key = format(time, 'yyyy-MM-dd');
+          } else {
+            key = format(startOfWeek(time, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+          }
+
+          const idx = keyIndex.get(key);
+          if (idx !== undefined && buckets[idx]) {
+            buckets[idx].total += tx.amount;
+          }
+        }
+      }
+      const trendData = buckets.map(({ label, total }) => ({ label, total }));
+
+      const result: AnalyticsCalculatedData = {
+        periodLabel: label,
+        currentTotal,
+        highestExpense,
+        averagePerDay,
+        percentageChange,
+        categoryData,
+        trendData,
+        txCount: currentPeriodTxs.length,
+      };
+
+      cacheRef.current.set(cacheKey, result);
+      setAnalyticsData(result);
+      setIsCalculating(false);
+    }, 10);
+
+    return () => clearTimeout(timer);
+  }, [
+    activeTransactions,
+    categories,
+    selectedPeriod,
+    currentInterval,
+    previousInterval,
+    computedPeriodLabel,
+    minDateISO,
+    maxDateISO,
+    t,
+    locale,
+    dexieQueriedTransactions,
+    fallbackTransactions
+  ]);
 
   const tooltipStyle = useMemo(() => {
     return {
-      borderRadius: '16px',
-      border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      borderRadius: '14px',
+      border: darkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
+      boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 12px 32px -12px rgba(15,23,42,0.18)',
       backgroundColor: darkMode ? '#0f172a' : '#ffffff',
       color: darkMode ? '#f8fafc' : '#0f172a',
       fontSize: '12px',
       fontWeight: '600',
     };
   }, [darkMode]);
+
+  if (isCalculating || !analyticsData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 space-y-4">
+        <Loader2 className="w-9 h-9 text-emerald-500 animate-spin" />
+        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium animate-pulse">
+          {lang === 'en' ? 'Processing analytics data...' : 'Memproses analisis data...'}
+        </span>
+      </div>
+    );
+  }
+
+  const {
+    periodLabel,
+    currentTotal,
+    highestExpense,
+    averagePerDay,
+    percentageChange,
+    categoryData,
+    trendData,
+    txCount
+  } = analyticsData;
 
   return (
     <div className="space-y-6">
@@ -312,7 +451,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 onClick={() => setSelectedPeriod(tab.id as PeriodOption)}
                 className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
                   selectedPeriod === tab.id
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
                 }`}
               >
@@ -350,10 +489,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Total Spending */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-4 sm:p-5 text-white shadow-lg shadow-emerald-600/15 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute right-2 -bottom-4 opacity-10 text-white pointer-events-none">
-            <DollarSign className="w-24 h-24" />
-          </div>
+        <div className="bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_32px_-12px_rgba(5,150,105,0.45)] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between">
           <div>
             <span className="text-xs font-medium text-emerald-100 block">{t.kpiTotalExpense}</span>
             <div className="text-xl sm:text-2xl font-extrabold mt-1 tracking-tight">
@@ -413,7 +549,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </div>
           </div>
           <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-2">
-            {currentPeriodTransactions.length} <span className="text-xs font-normal text-slate-400">{t.kpiTimes}</span>
+            {txCount} <span className="text-xs font-normal text-slate-400">{t.kpiTimes}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">{t.kpiFreqDesc}</p>
         </div>
@@ -464,7 +600,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === 'bar' ? (
                   <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={24} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
@@ -475,7 +611,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
                       contentStyle={tooltipStyle}
                     />
-                    <Bar dataKey="total" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="total" fill="#10b981" radius={[6, 6, 0, 0]} isAnimationActive={trendData.length < 30} />
                   </BarChart>
                 ) : (
                   <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -485,7 +621,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={24} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
@@ -503,6 +639,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorExpense)"
+                      isAnimationActive={trendData.length < 30}
                     />
                   </AreaChart>
                 )}
@@ -539,6 +676,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       innerRadius={55}
                       outerRadius={80}
                       paddingAngle={3}
+                      isAnimationActive={categoryData.length < 20}
                     >
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

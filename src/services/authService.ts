@@ -1,5 +1,19 @@
 // src/services/authService.ts
+import { Capacitor } from '@capacitor/core';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+
+// Domain produksi untuk redirect link verifikasi email.
+// Di web memakai origin aktif; di native (Capacitor) memakai VITE_APP_URL karena
+// origin aplikasi adalah https://localhost yang tidak bisa diakses dari email.
+const PROD_APP_URL = 'https://duit-wallet.vercel.app';
+
+const getEmailRedirectUrl = (): string => {
+  if (Capacitor.isNativePlatform()) {
+    const envUrl = import.meta.env.VITE_APP_URL as string | undefined;
+    return `${(envUrl && envUrl.trim()) || PROD_APP_URL}`.replace(/\/+$/, '') + '/';
+  }
+  return `${window.location.origin}/`;
+};
 
 export interface UserProfile {
   id: string;
@@ -31,6 +45,7 @@ export const authService = {
         data: {
           display_name: displayName,
         },
+        emailRedirectTo: getEmailRedirectUrl(),
       },
     });
 

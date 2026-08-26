@@ -38,12 +38,12 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
 
   return (
     <div
-      className={`pointer-events-auto p-3.5 rounded-3xl shadow-2xl border flex items-center justify-between space-x-3 transition-all duration-300 transform translate-y-0 backdrop-blur-2xl animate-in slide-in-from-bottom-2 ${
+      className={`pointer-events-auto p-3.5 rounded-2xl shadow-glass shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] border flex items-center justify-between space-x-3 transition-all duration-300 transform translate-y-0 animate-in slide-in-from-bottom-2 ${
         isSuccess
-          ? 'bg-emerald-950/85 dark:bg-emerald-950/90 border-emerald-400/30 text-emerald-100 shadow-emerald-950/40'
+          ? 'bg-emerald-950 dark:bg-emerald-950 border-emerald-400/30 text-emerald-100'
           : isError
-          ? 'bg-rose-950/85 dark:bg-rose-950/90 border-rose-400/30 text-rose-100 shadow-rose-950/40'
-          : 'bg-slate-900/85 dark:bg-slate-900/90 border-slate-700/60 text-slate-100 shadow-slate-950/40'
+          ? 'bg-rose-950 dark:bg-rose-950 border-rose-400/30 text-rose-100'
+          : 'bg-slate-900 dark:bg-slate-900 border-slate-700 text-slate-100'
       }`}
     >
       <div className="flex items-center space-x-3 min-w-0">

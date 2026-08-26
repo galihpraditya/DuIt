@@ -1,4 +1,4 @@
-﻿import Dexie, { type Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import type { Category, Transaction, Budget, RecurringExpense } from '../types';
 
 export class WalletDatabase extends Dexie {
@@ -14,6 +14,9 @@ export class WalletDatabase extends Dexie {
       transactions: 'id, date, categoryId, amount, createdAt',
       budgets: 'id, categoryId, month',
       recurringExpenses: 'id, categoryId, nextDueDate, isActive'
+    });
+    this.version(2).stores({
+      transactions: 'id, date, categoryId, amount, createdAt, [categoryId+date]'
     });
   }
 }

@@ -67,9 +67,17 @@ DuIt operates on a **Local-First, Cloud-Synced** model:
    ```env
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   VITE_APP_URL=https://duit-wallet.vercel.app
    ```
 
-4. Start the local development server:
+4. **Configure Supabase Auth URLs (required for email verification)**:
+   In the Supabase Dashboard, open **Authentication > URL Configuration** and set:
+   - **Site URL**: `https://duit-wallet.vercel.app`
+   - **Redirect URLs**: `https://duit-wallet.vercel.app/**` plus `http://localhost:5173/**` (for local development)
+
+   Without this, confirmation email links will redirect to `localhost` instead of the deployed app.
+
+5. Start the local development server:
    ```bash
    npm run dev
    ```

@@ -235,7 +235,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 onClick={() => onSelectMonthFilter('ALL')}
                 className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
                   isAllTime
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
@@ -301,7 +301,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       {/* Transaction List Grouped by Date */}
       {transactions.length === 0 ? (
         /* Empty Database State */
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="glass-card rounded-3xl p-12 text-center space-y-1">
           <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
             <Tag className="w-8 h-8" />
           </div>
@@ -311,14 +311,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </p>
           <button
             onClick={onOpenNewTransaction}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-500/25 transition-transform active:scale-95 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors active:scale-95 cursor-pointer"
           >
             {t.recordFirstTransaction}
           </button>
         </div>
       ) : filteredTransactions.length === 0 ? (
         /* Filtered 0 Results State */
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="glass-card rounded-3xl p-10 text-center space-y-3">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center mx-auto">
             <CalendarDays className="w-7 h-7" />
           </div>
@@ -342,16 +342,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               {/* Date Group Header with Subtotal */}
               <div className="flex items-center justify-between px-2 pt-1">
                 <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-                  <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
+                  <CalendarIcon className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{formatRelativeDateIndo(group.dateStr, lang)}</span>
                 </div>
-                <div className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-0.5 rounded-lg border border-rose-100 dark:border-rose-900/40">
-                  - {formatIDR(group.subtotal, false, lang)}
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  − {formatIDR(group.subtotal, false, lang)}
                 </div>
               </div>
 
               {/* Transaction Cards in Date Group */}
-              <div className="glass-card rounded-3xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-sm">
+              <div className="glass-card rounded-2xl divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
                 {group.items.map((tx) => {
                   const cat = categoryMap.get(tx.categoryId) || {
                     name: 'Lain-lain',
@@ -369,7 +369,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Left: Icon & Info */}
                       <div className="flex items-center space-x-3 min-w-0 pr-3">
                         <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-105 transition-transform"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
                           style={{ backgroundColor: cat.color }}
                         >
                           <DynamicIcon name={cat.icon} className="w-5 h-5" />

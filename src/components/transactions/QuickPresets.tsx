@@ -1,4 +1,6 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/database';
 import { Zap, Sparkles } from 'lucide-react';
 import { formatIDR } from '../../utils/formatters';
 import type { Category, Transaction } from '../../types';
@@ -24,11 +26,19 @@ interface QuickPresetsProps {
 
 export const QuickPresets: React.FC<QuickPresetsProps> = ({
   categories,
-  transactions = [],
+  transactions: fallbackTransactions,
   onSelectPreset,
   lang = 'id',
   t,
 }) => {
+  // DEXIE LIMIT QUERY: Ambil maksimal 100 transaksi terbaru untuk deteksi kebiasaan (ultra cepat)
+  const recentTransactions = useLiveQuery(
+    () => db.transactions.orderBy('date').reverse().limit(100).toArray(),
+    []
+  );
+
+  const transactions = recentTransactions !== undefined ? recentTransactions : fallbackTransactions || [];
+
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
@@ -159,7 +169,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
           <button
             key={`${preset.label}-${index}`}
             onClick={() => onSelectPreset(preset)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-2xl glass-pill hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-sm transition-all flex items-center space-x-2 active:scale-95 group cursor-pointer"
+            className="shrink-0 text-xs px-3 py-1.5 rounded-lg glass-pill hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center space-x-2 active:scale-95 group cursor-pointer"
             title={preset.isHabit ? (lang === 'en' ? `Recorded ${preset.frequency} times` : `Sering dicatat (${preset.frequency}x)`) : undefined}
           >
             {cat && (
@@ -170,10 +180,10 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
                 <DynamicIcon name={cat.icon} className="w-2.5 h-2.5" />
               </span>
             )}
-            <span className="font-semibold text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+            <span className="font-medium text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
               {preset.label}
             </span>
-            <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/40">
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
               {formatIDR(preset.amount, true, lang)}
             </span>
           </button>

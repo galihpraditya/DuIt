@@ -1,4 +1,5 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, ArrowRight, ShieldCheck, Check, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/authService';
 import type { Translations } from '../../constants/translations';
@@ -20,8 +21,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [error, setError] = useState('');
   const [registeredEmailPending, setRegisteredEmailPending] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +78,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="glass-modal rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          <motion.div
+            className="glass-modal rounded-3xl w-full max-w-sm shadow-glass-lg overflow-hidden flex flex-col"
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+          >
         
         {/* Header Tabs */}
         <div className="flex items-center border-b border-slate-200/80 dark:border-slate-800/80">
@@ -112,7 +125,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           </button>
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 rounded-full bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors backdrop-blur-sm"
+            className="absolute top-3 right-3 p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -145,7 +158,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   setRegisteredEmailPending(null);
                   setMode('signin');
                 }}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-1.5 transition-all"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors"
               >
                 <span>Beralih ke Halaman Masuk</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -154,7 +167,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           ) : (
             <>
               <div className="text-center mb-6">
-                <div className="w-12 h-12 mx-auto bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 mb-3">
+                <div className="w-12 h-12 mx-auto bg-emerald-600 rounded-xl flex items-center justify-center text-white mb-3">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <h2 className="text-lg font-black text-slate-800 dark:text-white">
@@ -242,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3.5 mt-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] disabled:opacity-70 cursor-pointer"
+                  className="w-full py-3.5 mt-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] text-white font-bold text-sm flex items-center justify-center space-x-2 transition-colors active:scale-[0.98] disabled:opacity-70 cursor-pointer"
                 >
                   <span>{isLoading ? 'Memproses...' : (mode === 'signin' ? t.authSignIn : t.authSignUp)}</span>
                   {!isLoading && <ArrowRight className="w-4 h-4" />}
@@ -251,7 +264,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </>
           )}
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

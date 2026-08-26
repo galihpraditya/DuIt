@@ -123,7 +123,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         </div>
         <button
           onClick={openAddModal}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-md shadow-emerald-500/25 flex items-center space-x-1.5 transition-transform active:scale-95"
+          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors active:scale-95"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{t.newCategoryBtn}</span>
@@ -193,7 +193,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
       {/* Add / Edit Category Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 animate-in fade-in duration-200">
           <div className="glass-modal rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
@@ -308,7 +308,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center space-x-2 transition-colors active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>{isSubmitting ? '...' : t.saveCategoryBtn}</span>

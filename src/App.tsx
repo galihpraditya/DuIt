@@ -13,6 +13,7 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ToastContainer, type ToastMessage } from './components/common/Toast';
 import { MonthYearPickerModal } from './components/common/MonthYearPickerModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
 import { authService, type UserProfile } from './services/authService';
@@ -176,6 +177,24 @@ export function App() {
     return () => unsubscribe();
   }, []);
 
+  // Feedback hasil redirect link verifikasi email (?code=... / ?error_code=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('code') && !params.get('error') && !params.get('error_code')) return;
+    // Bersihkan param agar toast tidak muncul ulang saat remount (StrictMode/HMR)
+    window.history.replaceState(null, '', window.location.pathname);
+    if (params.get('code')) {
+      showToast(language === 'id'
+        ? 'Email berhasil diverifikasi! Anda kini sudah masuk.'
+        : 'Email verified successfully! You are now signed in.', 'success');
+    } else {
+      showToast(language === 'id'
+        ? 'Tautan verifikasi tidak valid atau sudah kedaluwarsa. Silakan daftar ulang atau masuk.'
+        : 'The verification link is invalid or has expired. Please sign up again or sign in.', 'error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Real-time synchronization & App Resume / Window Focus listeners
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -286,18 +305,15 @@ export function App() {
   const categoriesRaw = useLiveQuery(() => db.categories.toArray());
   const categories = useMemo(() => categoriesRaw || [], [categoriesRaw]);
 
-  const transactionsRaw = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray());
-  const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
+  // DEXIE INDEXED QUERY: Ambil data transaksi bulan yang aktif saja dari storage (jika bukan 'ALL')
 
-  // Find editing transaction from DB if ID is present in route
+  // Query editing transaction langsung by ID dari IndexedDB
   const editingTransaction = useMemo(() => {
     if (presetDraft) return presetDraft;
     if (!editTransactionId) return null;
-    return transactions.find((t) => t.id === editTransactionId) || null;
-  }, [presetDraft, editTransactionId, transactions]);
+    return editingTransactionRaw || transactions.find((t) => t.id === editTransactionId) || null;
+  }, [presetDraft, editTransactionId, editingTransactionRaw, transactions]);
 
-  // Current Month / All-Time Data Calculation
-  const { currentMonthTotal, currentMonthDailyAverage, currentMonthTxCount, currentDate } = useMemo(() => {
     let date = new Date();
 
     if (!isAllTime) {
@@ -549,13 +565,6 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
-      {/* Ambient Background Aura for Rich Glassmorphism */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-[120px]" />
-        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-teal-500/10 dark:bg-teal-500/15 blur-[120px]" />
-        <div className="absolute -bottom-40 left-1/4 w-[600px] h-[600px] rounded-full bg-emerald-600/5 dark:bg-emerald-600/10 blur-[140px]" />
-      </div>
-
       {/* Top Navbar */}
       <Navbar
         onOpenSettings={() => navigate('/settings')}
@@ -571,100 +580,92 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
-        {/* Top Summary Banner: Modern FinTech Hero Card */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
+        {/* Top Summary Banner: Liquid Glass Stats Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 sm:p-7 text-white shadow-xl shadow-emerald-600/20 relative overflow-hidden border border-white/15">
-              {/* Subtle decorative glows */}
-              <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-              <div className="absolute right-1/3 -bottom-20 w-80 h-80 rounded-full bg-teal-400/10 blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 space-y-5">
-                {/* Top Header Row: Prominent Section Label & Month Navigator */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-white/15">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-white/20 border border-white/25 flex items-center justify-center text-white backdrop-blur-md shadow-sm shrink-0">
-                      <Banknote className="w-4 h-4 stroke-[2.5]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-bold text-white tracking-wide">
-                      {isAllTime ? t.totalExpenseAllTime : t.totalExpenseThisMonth}
-                    </span>
+            <div className="glass-card rounded-3xl p-5 sm:p-6">
+              {/* Header Row: Label & Month Navigator */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-900/5 dark:border-white/10">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
+                    <Banknote className="w-4 h-4" />
                   </div>
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 tracking-wide">
+                    {isAllTime ? t.totalExpenseAllTime : t.totalExpenseThisMonth}
+                  </span>
+                </div>
 
-                  {/* Month Navigator Pill */}
-                  <div className="flex items-center justify-between sm:justify-end space-x-1.5 bg-black/20 dark:bg-black/30 p-1 rounded-2xl border border-white/15 backdrop-blur-md self-start sm:self-auto w-full sm:w-auto">
-                    <button
-                      onClick={handlePrevMonth}
-                      className="p-1.5 hover:bg-white/15 rounded-xl transition-all text-emerald-100 hover:text-white active:scale-95"
-                      title={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
-                    >
-                      <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
-                    </button>
-                    
-                    {/* Clickable Month/Year Selector Pill */}
-                    <button
-                      type="button"
-                      onClick={() => setIsMonthPickerOpen(true)}
-                      className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-xl hover:bg-white/15 active:scale-95 transition-all text-white font-extrabold text-xs sm:text-sm min-w-[120px]"
-                      title={language === 'en' ? 'Click to select month & year' : 'Klik untuk memilih bulan & tahun'}
-                    >
-                      {isAllTime ? (
-                        <>
-                          <Layers className="w-3.5 h-3.5 text-emerald-300 stroke-[2.5]" />
-                          <span>{t.allTransactions}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Calendar className="w-3.5 h-3.5 text-emerald-300 stroke-[2.5]" />
-                          <span>
-                            {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enLocale : idLocale })}
-                          </span>
-                        </>
-                      )}
-                    </button>
+                {/* Month Navigator */}
+                <div className="flex items-center justify-between sm:justify-end space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto w-full sm:w-auto">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    title={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
+                  >
+                    <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                  </button>
 
-                    <button
-                      onClick={handleNextMonth}
-                      className="p-1.5 hover:bg-white/15 rounded-xl transition-all text-emerald-100 hover:text-white active:scale-95"
-                      title={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
-                    >
-                      <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMonthPickerOpen(true)}
+                    className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm min-w-[120px]"
+                    title={language === 'en' ? 'Click to select month & year' : 'Klik untuk memilih bulan & tahun'}
+                  >
+                    {isAllTime ? (
+                      <>
+                        <Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                        <span>{t.allTransactions}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                        <span>
+                          {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enLocale : idLocale })}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    title={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
+                  >
+                    <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Content: Big Number & Auxiliary Metrics */}
+              <div className="pt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-end">
+                {/* Left: Total */}
+                <div className="lg:col-span-7">
+                  <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
+                    {formatIDR(currentMonthTotal, false, language)}
                   </div>
                 </div>
 
-                {/* Main Content Grid: Big Balance & Auxiliary Financial Metrics */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center">
-                  {/* Left Column (7 cols): Main Balance */}
-                  <div className="lg:col-span-7">
-                    <div className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-sm">
-                      {formatIDR(currentMonthTotal, false, language)}
+                {/* Right: Inline Metrics */}
+                <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 gap-y-3 w-full lg:border-l lg:border-slate-900/10 dark:lg:border-white/10 lg:pl-8">
+                  <div>
+                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
+                      <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="truncate">{t.kpiDailyAverage}</span>
+                    </div>
+                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                      {formatIDR(currentMonthDailyAverage, false, language)}
                     </div>
                   </div>
 
-                  {/* Right Column (5 cols): Metrics Grid */}
-                  <div className="lg:col-span-5 grid grid-cols-2 gap-3 w-full">
-                    {/* Metric 1: Daily Average */}
-                    <div className="bg-black/15 dark:bg-black/25 p-3.5 sm:p-4 rounded-2xl border border-white/15 backdrop-blur-md flex flex-col justify-between">
-                      <div className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-200">
-                        <Calendar className="w-3.5 h-3.5 text-amber-300" />
-                        <span className="truncate">{t.kpiDailyAverage}</span>
-                      </div>
-                      <div className="text-sm sm:text-lg font-black text-white mt-1.5 tracking-tight truncate">
-                        {formatIDR(currentMonthDailyAverage, false, language)}
-                      </div>
+                  <div>
+                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
+                      <Tag className="w-3.5 h-3.5 text-sky-500" />
+                      <span className="truncate">{t.kpiFrequency}</span>
                     </div>
-
-                    {/* Metric 2: Transaction Count */}
-                    <div className="bg-black/15 dark:bg-black/25 p-3.5 sm:p-4 rounded-2xl border border-white/15 backdrop-blur-md flex flex-col justify-between">
-                      <div className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-200">
-                        <Tag className="w-3.5 h-3.5 text-sky-300" />
-                        <span className="truncate">{t.kpiFrequency}</span>
-                      </div>
-                      <div className="text-sm sm:text-lg font-black text-white mt-1.5 tracking-tight">
-                        {currentMonthTxCount} <span className="text-xs font-semibold text-emerald-200">{t.kpiTimes}</span>
-                      </div>
+                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+                      {currentMonthTxCount}{' '}
+                      <span className="text-xs font-medium text-slate-400">{t.kpiTimes}</span>
                     </div>
                   </div>
                 </div>
@@ -703,40 +704,46 @@ export function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <Suspense fallback={<ViewLoaderFallback />}>
-            <AnalyticsView
-              transactions={transactions}
-              categories={categories}
-              darkMode={darkMode}
-              lang={language}
-              t={t}
-            />
-          </Suspense>
+          <ErrorBoundary lang={language}>
+            <Suspense fallback={<ViewLoaderFallback />}>
+              <AnalyticsView
+                transactions={transactions}
+                categories={categories}
+                darkMode={darkMode}
+                lang={language}
+                t={t}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'budget' && (
-          <Suspense fallback={<ViewLoaderFallback />}>
-            <BudgetManager
-              categories={categories}
-              transactions={transactions}
-              onUpdateCategoryBudget={handleUpdateCategoryBudget}
-              lang={language}
-              t={t}
-            />
-          </Suspense>
+          <ErrorBoundary lang={language}>
+            <Suspense fallback={<ViewLoaderFallback />}>
+              <BudgetManager
+                categories={categories}
+                transactions={transactions}
+                onUpdateCategoryBudget={handleUpdateCategoryBudget}
+                lang={language}
+                t={t}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'categories' && (
-          <Suspense fallback={<ViewLoaderFallback />}>
-            <CategoryManager
-              categories={categories}
-              transactions={transactions}
-              onSaveCategory={handleSaveCategory}
-              onDeleteCategory={handleDeleteCategory}
-              lang={language}
-              t={t}
-            />
-          </Suspense>
+          <ErrorBoundary lang={language}>
+            <Suspense fallback={<ViewLoaderFallback />}>
+              <CategoryManager
+                categories={categories}
+                transactions={transactions}
+                onSaveCategory={handleSaveCategory}
+                onDeleteCategory={handleDeleteCategory}
+                lang={language}
+                t={t}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </main>
 

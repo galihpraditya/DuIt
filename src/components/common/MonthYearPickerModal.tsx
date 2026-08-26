@@ -77,7 +77,7 @@ export const MonthYearPickerModal: React.FC<MonthYearPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 animate-in fade-in duration-200">
       <div 
         className="w-full max-w-sm glass-modal rounded-3xl p-5 shadow-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-4 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
@@ -136,7 +136,7 @@ export const MonthYearPickerModal: React.FC<MonthYearPickerModalProps> = ({
                 onClick={() => handlePickMonth(idx)}
                 className={`py-3 px-2 rounded-2xl text-xs font-bold transition-all duration-150 relative active:scale-95 ${
                   isSelected
-                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400'
+                    ? 'bg-emerald-600 text-white'
                     : isCurrent
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
                     : 'bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700'

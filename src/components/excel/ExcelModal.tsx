@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
+import { db } from '../../db/database';
 import {
   exportTransactionsToExcel,
   parseExcelFile,
@@ -51,7 +52,9 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsProcessing(true);
-      await exportTransactionsToExcel({ transactions, categories });
+      // Ambil seluruh data langsung dari Dexie storage agar export mencakup seluruh riwayat tanpa membebani RAM
+      const allTransactions = await db.transactions.orderBy('date').reverse().toArray();
+      await exportTransactionsToExcel({ transactions: allTransactions, categories });
       setStatusMessage({ type: 'success', text: t.exportSuccessMsg });
     } catch {
       setStatusMessage({ type: 'error', text: t.exportFailedMsg });
@@ -123,7 +126,7 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
   const totalExpense = transactions.reduce((a, b) => a + b.amount, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 animate-in fade-in duration-200">
       <div className="glass-modal rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
