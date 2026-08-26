@@ -306,14 +306,42 @@ export function App() {
   const categories = useMemo(() => categoriesRaw || [], [categoriesRaw]);
 
   // DEXIE INDEXED QUERY: Ambil data transaksi bulan yang aktif saja dari storage (jika bukan 'ALL')
+  const transactionsRaw = useLiveQuery(
+    () => {
+      if (isAllTime) {
+        return db.transactions.orderBy('date').reverse().toArray();
+      }
+      try {
+        const [yearStr, monthStr] = (selectedMonthFilter || '').split('-');
+        const y = parseInt(yearStr, 10);
+        const m = parseInt(monthStr, 10);
+        if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+          const start = new Date(y, m - 1, 1, 0, 0, 0, 0).toISOString();
+          const end = new Date(y, m, 0, 23, 59, 59, 999).toISOString();
+          return db.transactions.where('date').between(start, end, true, true).reverse().sortBy('date');
+        }
+      } catch {}
+      return db.transactions.orderBy('date').reverse().toArray();
+    },
+    [selectedMonthFilter, isAllTime]
+  );
+  const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
 
   // Query editing transaction langsung by ID dari IndexedDB
+  const editingTransactionRaw = useLiveQuery(
+    () => (editTransactionId ? db.transactions.get(editTransactionId) : undefined),
+    [editTransactionId]
+  );
+
+  // Find editing transaction from DB if ID is present in route
   const editingTransaction = useMemo(() => {
     if (presetDraft) return presetDraft;
     if (!editTransactionId) return null;
     return editingTransactionRaw || transactions.find((t) => t.id === editTransactionId) || null;
   }, [presetDraft, editTransactionId, editingTransactionRaw, transactions]);
 
+  // Current Month / All-Time Data Calculation
+  const { currentMonthTotal, currentMonthDailyAverage, currentMonthTxCount, currentDate } = useMemo(() => {
     let date = new Date();
 
     if (!isAllTime) {
