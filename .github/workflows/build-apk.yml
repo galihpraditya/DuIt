@@ -1,10 +1,16 @@
-﻿name: Build and Release Android APK
+name: Build and Release Android APK
 
 on:
   push:
+    branches:
+      - master
+      - main
     tags:
-      - 'v*' # Memicu rilis saat push tag seperti v1.0.0
-  workflow_dispatch: # Memungkinkan klik tombol "Run workflow" manual di GitHub
+      - 'v*' # Memicu rilis otomatis saat push tag versi seperti v1.0.0
+  workflow_dispatch: # Memungkinkan klik tombol "Run workflow" manual di GitHub Actions
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
@@ -27,6 +33,9 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
@@ -37,6 +46,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL || 'https://duit-wallet.vercel.app' }}
         run: |
           npm run build
           npx cap sync android
@@ -45,16 +55,31 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-      - name: Build Android Release APK
+      - name: Build Android APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease assembleDebug --no-daemon
 
-      - name: Prepare APK File
+      - name: Prepare APK Files
         run: |
           mkdir -p release-output
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk release-output/DuIt-Wallet-${{ github.ref_name || 'latest' }}.apk
+          SAFE_REF=$(echo "${{ github.ref_name || 'latest' }}" | tr '/' '-')
 
-      # Upload artifact agar bisa diunduh langsung dari halaman Actions
+          # Salin APK Release (yang sudah ditandatangani)
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk "release-output/DuIt-Wallet-${SAFE_REF}.apk"
+          elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-output/DuIt-Wallet-${SAFE_REF}-unsigned.apk"
+          fi
+
+          # Salin APK Debug untuk testing
+          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp android/app/build/outputs/apk/debug/app-debug.apk "release-output/DuIt-Wallet-debug.apk"
+          fi
+
+          echo "Daftar file APK yang dihasilkan:"
+          ls -la release-output/
+
+      # Upload artifact agar bisa diunduh langsung dari tab Actions di setiap build
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
