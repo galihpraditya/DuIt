@@ -75,8 +75,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       }
       setNotes(initialData.notes || '');
       setPaymentMethod(initialData.paymentMethod || 'Tunai');
-      // Buka otomatis bagian detail saat mengedit agar semua nilai terlihat
-      setIsDetailOpen(true);
+      setIsDetailOpen(false);
     } else {
       setAmountStr('');
       setSelectedCategoryId(categories[0]?.id || '');
@@ -181,7 +180,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const detailSummary = [
     format(new Date(dateStr), 'dd MMM HH:mm'),
     paymentMethod,
-    notes.trim() || null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -327,6 +325,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
             </div>
 
+            {/* Catatan / Keterangan (Di luar detail karena hampir selalu digunakan) */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
+                <AlignLeft className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{t.notesLabel}</span>
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t.notesPlaceholder}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              />
+            </div>
+
             {/* Bagian Detail (Lipat) */}
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <button
@@ -419,20 +432,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Catatan */}
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center space-x-1">
-                      <AlignLeft className="w-3.5 h-3.5" />
-                      <span>{t.notesLabel}</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder={t.notesPlaceholder}
-                      className="w-full px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
                 </div>
               )}
             </div>

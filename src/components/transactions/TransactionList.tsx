@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Filter, ArrowDownRight, Calendar as CalendarIcon, Tag, RotateCcw, CalendarDays, Smartphone, Banknote, Landmark, CreditCard } from 'lucide-react';
+import { Search, Filter, ArrowDownRight, Calendar as CalendarIcon, Tag, RotateCcw, CalendarDays, Smartphone, Banknote, Landmark, CreditCard, Plus } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR, formatRelativeDateIndo, formatTimeOnly, getMonthWeeks } from '../../utils/formatters';
@@ -14,6 +14,7 @@ interface TransactionListProps {
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction?: (id: string) => void;
   onOpenNewTransaction: () => void;
+  onAddTransactionOnDate?: (dateStr: string) => void;
   lang?: Language;
   t: Translations;
 }
@@ -42,6 +43,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onSelectMonthFilter,
   onEditTransaction,
   onOpenNewTransaction,
+  onAddTransactionOnDate,
   lang = 'id',
   t,
 }) => {
@@ -339,12 +341,21 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         <div className="space-y-4">
           {groupedTransactions.map((group, groupIdx) => (
             <div key={groupIdx} className="space-y-2">
-              {/* Date Group Header with Subtotal */}
+              {/* Date Group Header with Subtotal & Clickable Quick Add */}
               <div className="flex items-center justify-between px-2 pt-1">
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-                  <CalendarIcon className="w-3.5 h-3.5 text-emerald-600" />
+                <button
+                  type="button"
+                  onClick={() => onAddTransactionOnDate ? onAddTransactionOnDate(group.dateStr) : onOpenNewTransaction()}
+                  className="group/date flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 py-1 px-2 -ml-2 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 transition-all cursor-pointer text-left"
+                  title={`${t.addTransactionOnThisDate}: ${formatRelativeDateIndo(group.dateStr, lang)}`}
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 group-hover/date:scale-110 transition-transform" />
                   <span>{formatRelativeDateIndo(group.dateStr, lang)}</span>
-                </div>
+                  <span className="opacity-0 group-hover/date:opacity-100 sm:flex items-center text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-100/80 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md transition-opacity ml-1 hidden">
+                    <Plus className="w-3 h-3 mr-0.5 stroke-[2.5]" />
+                    <span>{t.addTransactionOnThisDate}</span>
+                  </span>
+                </button>
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                   − {formatIDR(group.subtotal, false, lang)}
                 </div>

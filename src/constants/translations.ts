@@ -233,6 +233,38 @@ export interface Translations {
   backupRestoreBtn: string;
   backupSuccessMsg: string;
   backupFailedMsg: string;
+
+  // Shortcut & Date Actions
+  addTransactionOnThisDate: string;
+
+  // Category Details & Batch Move
+  categoryDetails: string;
+  categoryTransactions: string;
+  categoryNoTransactions: string;
+  moveCategory: string;
+  selectDestinationCategory: string;
+  selectedCount: string;
+  batchMoveSuccess: string;
+  selectAll: string;
+  deselectAll: string;
+  batchMoveConfirmTitle: string;
+  batchMoveConfirmMsg: string;
+  searchCategoryTxPlaceholder: string;
+  currentCategoryBadge: string;
+  destinationCategoryLabel: string;
+  confirmMoveBtn: string;
+
+  // Settings Page
+  backToTransactions: string;
+  keyboardShortcuts: string;
+  shortcutNewTx: string;
+  shortcutSettings: string;
+  shortcutSearch: string;
+  localDataSummary: string;
+  totalRecordsCount: string;
+  databaseStatus: string;
+  statusConnected: string;
+  statusLocalOnly: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -470,6 +502,38 @@ export const translations: Record<Language, Translations> = {
     backupRestoreBtn: 'Pulihkan Data (.json)',
     backupSuccessMsg: 'File cadangan (.json) berhasil diunduh!',
     backupFailedMsg: 'Gagal membuat cadangan.',
+
+    // Shortcut & Date Actions
+    addTransactionOnThisDate: 'Catat di tanggal ini',
+
+    // Category Details & Batch Move
+    categoryDetails: 'Detail Kategori',
+    categoryTransactions: 'Transaksi Kategori',
+    categoryNoTransactions: 'Belum ada transaksi di kategori ini.',
+    moveCategory: 'Pindahkan Kategori',
+    selectDestinationCategory: 'Pilih Kategori Tujuan',
+    selectedCount: 'transaksi dipilih',
+    batchMoveSuccess: '{count} transaksi berhasil dipindahkan ke kategori {name}!',
+    selectAll: 'Pilih Semua',
+    deselectAll: 'Batal Pilih Semua',
+    batchMoveConfirmTitle: 'Pindahkan Transaksi Terpilih',
+    batchMoveConfirmMsg: 'Pindahkan {count} transaksi terpilih ke kategori "{name}"?',
+    searchCategoryTxPlaceholder: 'Cari catatan atau nominal dalam kategori...',
+    currentCategoryBadge: 'Kategori Saat Ini',
+    destinationCategoryLabel: 'Pilih kategori baru untuk transaksi terpilih:',
+    confirmMoveBtn: 'Pindahkan Sekarang',
+
+    // Settings Page
+    backToTransactions: 'Kembali ke Transaksi',
+    keyboardShortcuts: 'Pintasan Keyboard',
+    shortcutNewTx: 'Tambah Transaksi Baru',
+    shortcutSettings: 'Buka Pengaturan',
+    shortcutSearch: 'Fokus Pencarian',
+    localDataSummary: 'Ringkasan Data Lokal',
+    totalRecordsCount: 'Total Catatan',
+    databaseStatus: 'Status Penyimpanan',
+    statusConnected: 'Tersinkronisasi ke Cloud (Supabase)',
+    statusLocalOnly: 'Penyimpanan Offline Lokal (IndexedDB)',
   },
   en: {
     appName: 'DuIt',
@@ -705,6 +769,37 @@ export const translations: Record<Language, Translations> = {
     backupRestoreBtn: 'Restore Data (.json)',
     backupSuccessMsg: 'Backup file (.json) downloaded successfully!',
     backupFailedMsg: 'Failed to generate backup.',
+    // Shortcut & Date Actions
+    addTransactionOnThisDate: 'Record on this date',
+
+    // Category Details & Batch Move
+    categoryDetails: 'Category Details',
+    categoryTransactions: 'Category Transactions',
+    categoryNoTransactions: 'No transactions in this category yet.',
+    moveCategory: 'Move Category',
+    selectDestinationCategory: 'Select Destination Category',
+    selectedCount: 'transactions selected',
+    batchMoveSuccess: '{count} transactions successfully moved to {name}!',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
+    batchMoveConfirmTitle: 'Move Selected Transactions',
+    batchMoveConfirmMsg: 'Move {count} selected transactions to category "{name}"?',
+    searchCategoryTxPlaceholder: 'Search notes or amount in this category...',
+    currentCategoryBadge: 'Current Category',
+    destinationCategoryLabel: 'Select new category for selected transactions:',
+    confirmMoveBtn: 'Move Now',
+
+    // Settings Page
+    backToTransactions: 'Back to Transactions',
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    shortcutNewTx: 'New Transaction',
+    shortcutSettings: 'Open Settings',
+    shortcutSearch: 'Focus Search',
+    localDataSummary: 'Local Data Summary',
+    totalRecordsCount: 'Total Records',
+    databaseStatus: 'Storage Status',
+    statusConnected: 'Synchronized with Cloud (Supabase)',
+    statusLocalOnly: 'Local Offline Storage (IndexedDB)',
   },
 };
 

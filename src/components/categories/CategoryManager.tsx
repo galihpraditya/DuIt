@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, X, Check, Grid, Tag, DollarSign, Sparkles } from '
 import type { Category, Transaction } from '../../types';
 import { DynamicIcon, IconPicker } from '../common/IconPicker';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { CategoryDetailModal } from './CategoryDetailModal';
 import { formatIDR } from '../../utils/formatters';
 import type { Language, Translations } from '../../constants/translations';
 
@@ -11,6 +12,7 @@ interface CategoryManagerProps {
   transactions: Transaction[];
   onSaveCategory: (category: Omit<Category, 'id' | 'createdAt'>, id?: string) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>;
+  onBatchMoveTransactions?: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
   lang?: Language;
   t: Translations;
 }
@@ -38,12 +40,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   transactions,
   onSaveCategory,
   onDeleteCategory,
+  onBatchMoveTransactions,
   lang = 'id',
   t,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingCat, setDeletingCat] = useState<Category | null>(null);
+  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState<Category | null>(null);
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('Utensils');
@@ -137,20 +141,24 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           return (
             <div
               key={cat.id}
-              className="glass-card rounded-3xl p-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between"
+              onClick={() => setSelectedCategoryForDetail(cat)}
+              className="glass-card rounded-3xl p-5 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group"
+              title={t.categoryDetails}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3 min-w-0">
                   <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-105 transition-transform"
                     style={{ backgroundColor: cat.color }}
                   >
                     <DynamicIcon name={cat.icon} className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {cat.name}
-                    </h4>
+                    <div className="flex items-center space-x-1.5">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {cat.name}
+                      </h4>
+                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Total:{' '}
                       <span className="font-semibold text-rose-600 dark:text-rose-400">
@@ -162,14 +170,20 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
                 <div className="flex items-center space-x-1">
                   <button
-                    onClick={() => openEditModal(cat)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditModal(cat);
+                    }}
                     className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title={t.editCategoryTitle}
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setDeletingCat(cat)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingCat(cat);
+                    }}
                     className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title={t.deleteCategoryTitle}
                   >
@@ -334,6 +348,22 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           }
         }}
         onCancel={() => setDeletingCat(null)}
+      />
+
+      {/* Category Detail Modal */}
+      <CategoryDetailModal
+        isOpen={!!selectedCategoryForDetail}
+        onClose={() => setSelectedCategoryForDetail(null)}
+        category={selectedCategoryForDetail}
+        categories={categories}
+        transactions={transactions}
+        onBatchMoveTransactions={async (txIds, targetCatId) => {
+          if (onBatchMoveTransactions) {
+            await onBatchMoveTransactions(txIds, targetCatId);
+          }
+        }}
+        lang={lang}
+        t={t}
       />
     </div>
   );

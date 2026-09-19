@@ -9,7 +9,7 @@ import { TransactionList } from './components/transactions/TransactionList';
 import { TransactionModal } from './components/transactions/TransactionModal';
 import { QuickPresets, type QuickPresetItem } from './components/transactions/QuickPresets';
 import { ExcelModal } from './components/excel/ExcelModal';
-import { SettingsModal } from './components/settings/SettingsModal';
+
 import { AuthModal } from './components/auth/AuthModal';
 import { ToastContainer, type ToastMessage } from './components/common/Toast';
 import { MonthYearPickerModal } from './components/common/MonthYearPickerModal';
@@ -42,6 +42,9 @@ const BudgetManager = lazy(() =>
 );
 const CategoryManager = lazy(() =>
   import('./components/categories/CategoryManager').then((m) => ({ default: m.CategoryManager }))
+);
+const SettingsView = lazy(() =>
+  import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView }))
 );
 
 const ViewLoaderFallback = () => (
@@ -79,6 +82,8 @@ export function App() {
       setLastActiveTab('budget');
     } else if (pathname.startsWith('/categories')) {
       setLastActiveTab('categories');
+    } else if (pathname.startsWith('/settings')) {
+      setLastActiveTab('settings');
     } else if (pathname.startsWith('/transactions') || pathname === '/') {
       setLastActiveTab('transactions');
     }
@@ -88,6 +93,7 @@ export function App() {
     if (pathname.startsWith('/analytics')) return 'analytics';
     if (pathname.startsWith('/budget')) return 'budget';
     if (pathname.startsWith('/categories')) return 'categories';
+    if (pathname.startsWith('/settings')) return 'settings';
     if (pathname.startsWith('/transactions') || pathname === '/') return 'transactions';
     return lastActiveTab;
   }, [pathname, lastActiveTab]);
@@ -97,7 +103,7 @@ export function App() {
   const editTxMatch = pathname.match(/^\/transactions\/edit\/([^/]+)$/);
   const editTransactionId = editTxMatch ? editTxMatch[1] : null;
 
-  const isSettingsOpen = pathname === '/settings';
+  // Settings is now a dedicated page view rendered in main
   const isExcelModalOpen = pathname === '/excel';
   const isAuthModalOpen = pathname === '/auth';
   const isTransactionModalOpen = isNewTransactionRoute || !!editTransactionId;
@@ -326,6 +332,10 @@ export function App() {
     [selectedMonthFilter, isAllTime]
   );
   const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
+
+  // DEXIE QUERY: Ambil seluruh data transaksi (all-time) untuk Kategori & Pengaturan
+  const allTransactionsRaw = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray());
+  const allTransactions = useMemo(() => allTransactionsRaw || [], [allTransactionsRaw]);
 
   // Query editing transaction langsung by ID dari IndexedDB
   const editingTransactionRaw = useLiveQuery(
@@ -562,6 +572,69 @@ export function App() {
     showToast(language === 'id' ? 'Seluruh data berhasil direset.' : 'All data successfully reset.', 'info');
   };
 
+  // Click Date Header Quick Add Handler
+  const handleAddTransactionOnDate = useCallback(
+    (dateStr: string) => {
+      try {
+        const targetDate = new Date(dateStr);
+        const now = new Date();
+        targetDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
+        setPresetDraft({
+          id: '',
+          amount: 0,
+          categoryId: categories[0]?.id || '',
+          date: targetDate.toISOString(),
+          notes: '',
+          paymentMethod: 'Tunai',
+          createdAt: new Date().toISOString(),
+        });
+        navigate('/transactions/new');
+      } catch {
+        navigate('/transactions/new');
+      }
+    },
+    [categories, navigate]
+  );
+
+  // Category Batch Reassignment Handler
+  const handleBatchMoveTransactions = useCallback(
+    async (transactionIds: string[], targetCategoryId: string) => {
+      if (!transactionIds.length || !targetCategoryId) return;
+
+      const targetCategory = categories.find((c) => c.id === targetCategoryId);
+      const targetName = targetCategory ? targetCategory.name : 'kategori baru';
+
+      try {
+        for (const id of transactionIds) {
+          await db.transactions.update(id, { categoryId: targetCategoryId });
+        }
+
+        if (currentUser?.id) {
+          const updatedTxs = await db.transactions.where('id').anyOf(transactionIds).toArray();
+          for (const tx of updatedTxs) {
+            await syncService.pushTransaction(tx, currentUser.id);
+          }
+        }
+
+        const msg = (t.batchMoveSuccess || '{count} transaksi berhasil dipindahkan ke kategori {name}!')
+          .replace('{count}', transactionIds.length.toString())
+          .replace('{name}', targetName);
+        showToast(msg, 'success');
+      } catch (err: any) {
+        console.error('Error batch moving transactions:', err);
+        showToast(
+          language === 'id'
+            ? 'Gagal memindahkan transaksi: ' + (err?.message || 'Terjadi kesalahan')
+            : 'Failed to move transactions: ' + (err?.message || 'An error occurred'),
+          'error'
+        );
+        throw err;
+      }
+    },
+    [categories, currentUser?.id, language, showToast, t.batchMoveSuccess]
+  );
+
   // Quick Preset Add Handler
   const handleSelectQuickPreset = (preset: QuickPresetItem) => {
     const now = new Date();
@@ -600,8 +673,6 @@ export function App() {
           setPresetDraft(null);
           navigate('/transactions/new');
         }}
-        onOpenAuth={() => navigate('/auth')}
-        currentUser={currentUser}
         activeTab={activeTab}
         onSelectTab={handleTabNavigation}
         t={t}
@@ -726,6 +797,7 @@ export function App() {
               setPresetDraft(null);
               navigate('/transactions/new');
             }}
+            onAddTransactionOnDate={handleAddTransactionOnDate}
             lang={language}
             t={t}
           />
@@ -764,10 +836,48 @@ export function App() {
             <Suspense fallback={<ViewLoaderFallback />}>
               <CategoryManager
                 categories={categories}
-                transactions={transactions}
+                transactions={allTransactions}
                 onSaveCategory={handleSaveCategory}
                 onDeleteCategory={handleDeleteCategory}
+                onBatchMoveTransactions={handleBatchMoveTransactions}
                 lang={language}
+                t={t}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {activeTab === 'settings' && (
+          <ErrorBoundary lang={language}>
+            <Suspense fallback={<ViewLoaderFallback />}>
+              <SettingsView
+                language={language}
+                onChangeLanguage={handleLanguageChange}
+                darkMode={darkMode}
+                onToggleDarkMode={() => setDarkMode(!darkMode)}
+                onOpenExcelModal={() => navigate('/excel')}
+                onResetAllData={handleResetAllData}
+                currentUser={currentUser}
+                onOpenAuth={() => navigate('/auth')}
+                onLogout={async () => {
+                  await authService.logout();
+                  await syncService.resetLocalDataToDefaults();
+                  setCurrentUser(null);
+                  showToast(language === 'id' ? 'Anda telah keluar dari akun.' : 'You have been signed out.', 'info');
+                }}
+                onDeleteAccount={async () => {
+                  if (currentUser?.id) {
+                    await authService.deleteAccount(currentUser.id);
+                  } else {
+                    await authService.deleteAccount();
+                  }
+                  await handleResetAllData();
+                  setCurrentUser(null);
+                  showToast(t.authDeleteAccountSuccess || 'Akun berhasil dihapus.', 'info');
+                }}
+                onBackToTransactions={() => handleTabNavigation('transactions')}
+                transactionCount={allTransactions.length}
+                categoryCount={categories.length}
                 t={t}
               />
             </Suspense>
@@ -817,36 +927,7 @@ export function App() {
         }}
       />
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={handleCloseModals}
-        language={language}
-        onChangeLanguage={handleLanguageChange}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode(!darkMode)}
-        onOpenExcelModal={() => navigate('/excel')}
-        onResetAllData={handleResetAllData}
-        currentUser={currentUser}
-        onOpenAuth={() => navigate('/auth')}
-        onLogout={async () => {
-          await authService.logout();
-          await syncService.resetLocalDataToDefaults();
-          setCurrentUser(null);
-          showToast(language === 'id' ? 'Anda telah keluar dari akun.' : 'You have been signed out.', 'info');
-        }}
-        onDeleteAccount={async () => {
-          if (currentUser?.id) {
-            await authService.deleteAccount(currentUser.id);
-          } else {
-            await authService.deleteAccount();
-          }
-          await handleResetAllData();
-          setCurrentUser(null);
-          showToast(t.authDeleteAccountSuccess || 'Akun berhasil dihapus.', 'info');
-        }}
-        t={t}
-      />
+
 
       {/* Authentication Modal */}
       <AuthModal
