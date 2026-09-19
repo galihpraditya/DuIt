@@ -50,6 +50,7 @@ export const syncService = {
       
       // Update/Insert kategori dari cloud ke local Dexie
       for (const cc of cloudCats) {
+        const localExisting = localCats.find((l) => l.id === cc.id);
         const catObj: Category = {
           id: cc.id,
           name: cc.name,
@@ -57,6 +58,7 @@ export const syncService = {
           color: cc.color,
           budgetLimit: cc.budget_limit ? Number(cc.budget_limit) : undefined,
           isDefault: cc.is_default,
+          order: typeof cc.order_index === 'number' ? cc.order_index : localExisting?.order,
           createdAt: cc.created_at,
         };
         await db.categories.put(catObj);

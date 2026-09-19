@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, initializeDefaultData, DEFAULT_CATEGORIES } from './db/database';
-import type { Category, Transaction } from './types';
+import type { Category, CategorySortMode, Transaction } from './types';
+import { sortCategories, getStoredCategorySortMode, setStoredCategorySortMode } from './utils/categorySorter';
 import { Navbar } from './components/layout/Navbar';
 import { BottomNav } from './components/layout/BottomNav';
 import { TransactionList } from './components/transactions/TransactionList';
@@ -311,7 +312,33 @@ export function App() {
   const categoriesRaw = useLiveQuery(() => db.categories.toArray());
   const categories = useMemo(() => categoriesRaw || [], [categoriesRaw]);
 
-  // DEXIE INDEXED QUERY: Ambil data transaksi bulan yang aktif saja dari storage (jika bukan 'ALL')
+  // Category Sort Mode & Reordering
+  const [categorySortMode, setCategorySortMode] = useState<CategorySortMode>(() => getStoredCategorySortMode());
+
+  const handleSortModeChange = useCallback((mode: CategorySortMode) => {
+    setCategorySortMode(mode);
+    setStoredCategorySortMode(mode);
+  }, []);
+
+  const handleReorderCategories = useCallback(
+    async (reordered: Category[]) => {
+      await db.transaction('rw', db.categories, async () => {
+        await db.categories.bulkPut(reordered);
+      });
+      showToast(t.categoryOrderUpdated, 'success');
+    },
+    [showToast, t.categoryOrderUpdated]
+  );
+
+  // DEXIE QUERY: Ambil seluruh data transaksi (all-time) untuk Kategori & Pengaturan
+  const allTransactionsRaw = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray());
+  const allTransactions = useMemo(() => allTransactionsRaw || [], [allTransactionsRaw]);
+
+  // Kategori terurut sesuai mode preferensi pengguna
+  const sortedCategories = useMemo(() => {
+    return sortCategories(categories, categorySortMode, allTransactions);
+  }, [categories, categorySortMode, allTransactions]);
+
   const transactionsRaw = useLiveQuery(
     () => {
       if (isAllTime) {
@@ -333,9 +360,6 @@ export function App() {
   );
   const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
 
-  // DEXIE QUERY: Ambil seluruh data transaksi (all-time) untuk Kategori & Pengaturan
-  const allTransactionsRaw = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray());
-  const allTransactions = useMemo(() => allTransactionsRaw || [], [allTransactionsRaw]);
 
   // Query editing transaction langsung by ID dari IndexedDB
   const editingTransactionRaw = useLiveQuery(
@@ -488,6 +512,7 @@ export function App() {
     } else {
       const newCat: Category = {
         id: generateId('cat'),
+        order: typeof data.order === 'number' ? data.order : categories.length,
         ...data,
         createdAt: new Date().toISOString(),
       };
@@ -583,7 +608,7 @@ export function App() {
         setPresetDraft({
           id: '',
           amount: 0,
-          categoryId: categories[0]?.id || '',
+          categoryId: sortedCategories[0]?.id || categories[0]?.id || '',
           date: targetDate.toISOString(),
           notes: '',
           paymentMethod: 'Tunai',
@@ -594,7 +619,7 @@ export function App() {
         navigate('/transactions/new');
       }
     },
-    [categories, navigate]
+    [sortedCategories, categories, navigate]
   );
 
   // Category Batch Reassignment Handler
@@ -773,7 +798,7 @@ export function App() {
 
             {/* Quick Presets Bar */}
             <QuickPresets
-              categories={categories}
+              categories={sortedCategories}
               transactions={transactions}
               onSelectPreset={handleSelectQuickPreset}
               lang={language}
@@ -786,7 +811,7 @@ export function App() {
         {activeTab === 'transactions' && (
           <TransactionList
             transactions={transactions}
-            categories={categories}
+            categories={sortedCategories}
             selectedMonthFilter={selectedMonthFilter}
             onSelectMonthFilter={handleSelectMonthFilter}
             onEditTransaction={(tx) => {
@@ -808,7 +833,7 @@ export function App() {
             <Suspense fallback={<ViewLoaderFallback />}>
               <AnalyticsView
                 transactions={transactions}
-                categories={categories}
+                categories={sortedCategories}
                 darkMode={darkMode}
                 lang={language}
                 t={t}
@@ -821,7 +846,7 @@ export function App() {
           <ErrorBoundary lang={language}>
             <Suspense fallback={<ViewLoaderFallback />}>
               <BudgetManager
-                categories={categories}
+                categories={sortedCategories}
                 transactions={transactions}
                 onUpdateCategoryBudget={handleUpdateCategoryBudget}
                 lang={language}
@@ -840,6 +865,9 @@ export function App() {
                 onSaveCategory={handleSaveCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onBatchMoveTransactions={handleBatchMoveTransactions}
+                sortMode={categorySortMode}
+                onChangeSortMode={handleSortModeChange}
+                onReorderCategories={handleReorderCategories}
                 lang={language}
                 t={t}
               />
@@ -902,7 +930,7 @@ export function App() {
         onClose={handleCloseModals}
         onSave={handleSaveTransaction}
         onDelete={handleDeleteTransaction}
-        categories={categories}
+        categories={sortedCategories}
         initialData={editingTransaction}
         onOpenCategoryManager={() => {
           navigate('/categories');
@@ -916,7 +944,7 @@ export function App() {
         isOpen={isExcelModalOpen}
         onClose={handleCloseModals}
         transactions={transactions}
-        categories={categories}
+        categories={sortedCategories}
         lang={language}
         t={t}
         onDataChanged={(msg) => {

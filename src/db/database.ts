@@ -24,14 +24,14 @@ export class WalletDatabase extends Dexie {
 export const db = new WalletDatabase();
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat-food', name: 'Makanan & Minuman', icon: 'Utensils', color: '#f97316', budgetLimit: 2500000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-transport', name: 'Transportasi & Bensin', icon: 'Car', color: '#0ea5e9', budgetLimit: 1000000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-shopping', name: 'Belanja & Kebutuhan', icon: 'ShoppingBag', color: '#ec4899', budgetLimit: 1500000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-bills', name: 'Tagihan & Utilitas', icon: 'Zap', color: '#eab308', budgetLimit: 1200000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-entertainment', name: 'Hiburan & Hobi', icon: 'Gamepad2', color: '#a855f7', budgetLimit: 800000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-health', name: 'Kesehatan & Obat', icon: 'HeartPulse', color: '#ef4444', budgetLimit: 500000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-education', name: 'Edukasi & Buku', icon: 'GraduationCap', color: '#14b8a6', budgetLimit: 500000, isDefault: true, createdAt: new Date().toISOString() },
-  { id: 'cat-others', name: 'Lain-lain', icon: 'CircleEllipsis', color: '#64748b', isDefault: true, createdAt: new Date().toISOString() },
+  { id: 'cat-food', name: 'Makanan & Minuman', icon: 'Utensils', color: '#f97316', budgetLimit: 2500000, isDefault: true, order: 0, createdAt: new Date().toISOString() },
+  { id: 'cat-transport', name: 'Transportasi & Bensin', icon: 'Car', color: '#0ea5e9', budgetLimit: 1000000, isDefault: true, order: 1, createdAt: new Date().toISOString() },
+  { id: 'cat-shopping', name: 'Belanja & Kebutuhan', icon: 'ShoppingBag', color: '#ec4899', budgetLimit: 1500000, isDefault: true, order: 2, createdAt: new Date().toISOString() },
+  { id: 'cat-bills', name: 'Tagihan & Utilitas', icon: 'Zap', color: '#eab308', budgetLimit: 1200000, isDefault: true, order: 3, createdAt: new Date().toISOString() },
+  { id: 'cat-entertainment', name: 'Hiburan & Hobi', icon: 'Gamepad2', color: '#a855f7', budgetLimit: 800000, isDefault: true, order: 4, createdAt: new Date().toISOString() },
+  { id: 'cat-health', name: 'Kesehatan & Obat', icon: 'HeartPulse', color: '#ef4444', budgetLimit: 500000, isDefault: true, order: 5, createdAt: new Date().toISOString() },
+  { id: 'cat-education', name: 'Edukasi & Buku', icon: 'GraduationCap', color: '#14b8a6', budgetLimit: 500000, isDefault: true, order: 6, createdAt: new Date().toISOString() },
+  { id: 'cat-others', name: 'Lain-lain', icon: 'CircleEllipsis', color: '#64748b', isDefault: true, order: 7, createdAt: new Date().toISOString() },
 ];
 
 export async function initializeDefaultData() {

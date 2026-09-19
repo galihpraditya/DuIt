@@ -123,6 +123,21 @@ export interface Translations {
   errorCategoryName: string;
   budgetLimitPerMonth: string;
 
+  // Category Sort & Reorder
+  categorySortBy: string;
+  sortModeManual: string;
+  sortModeMostUsed: string;
+  sortModeHighestAmount: string;
+  sortModeNameAsc: string;
+  sortModeNameDesc: string;
+  sortModeNewest: string;
+  applyAsManualOrder: string;
+  applyAsManualTooltip: string;
+  moveUp: string;
+  moveDown: string;
+  categoryOrderUpdated: string;
+  orderRankBadge: string;
+
   // Analytics View
   analyticsHeaderTitle: string;
   activePeriodLabel: string;
@@ -391,6 +406,21 @@ export const translations: Record<Language, Translations> = {
     errorCategoryName: 'Nama kategori tidak boleh kosong.',
     budgetLimitPerMonth: 'Batas Anggaran:',
 
+    // Category Sort & Reorder
+    categorySortBy: 'Urutkan:',
+    sortModeManual: 'Urutan Kustom (Manual)',
+    sortModeMostUsed: 'Paling Sering Digunakan (Cerdas)',
+    sortModeHighestAmount: 'Pengeluaran Terbesar',
+    sortModeNameAsc: 'Nama (A - Z)',
+    sortModeNameDesc: 'Nama (Z - A)',
+    sortModeNewest: 'Kategori Terbaru',
+    applyAsManualOrder: 'Simpan susunan ini ke Urutan Manual',
+    applyAsManualTooltip: 'Kunci susunan otomatis saat ini menjadi susunan manual agar tetap bisa Anda sesuaikan',
+    moveUp: 'Pindah ke atas',
+    moveDown: 'Pindah ke bawah',
+    categoryOrderUpdated: 'Urutan kategori berhasil disimpan!',
+    orderRankBadge: 'Urutan',
+
     // Analytics View
     analyticsHeaderTitle: 'Analisis & Grafik Pengeluaran',
     activePeriodLabel: 'Periode aktif:',
@@ -657,6 +687,21 @@ export const translations: Record<Language, Translations> = {
     deleteCategoryConfirmBtn: 'Delete Category',
     errorCategoryName: 'Category name cannot be empty.',
     budgetLimitPerMonth: 'Budget Limit:',
+
+    // Category Sort & Reorder
+    categorySortBy: 'Sort by:',
+    sortModeManual: 'Custom Order (Manual)',
+    sortModeMostUsed: 'Most Frequently Used (Smart)',
+    sortModeHighestAmount: 'Highest Spending',
+    sortModeNameAsc: 'Name (A - Z)',
+    sortModeNameDesc: 'Name (Z - A)',
+    sortModeNewest: 'Newest Created',
+    applyAsManualOrder: 'Lock current as Manual Order',
+    applyAsManualTooltip: 'Save this automatic arrangement as your custom manual order so you can fine-tune it',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    categoryOrderUpdated: 'Category order saved successfully!',
+    orderRankBadge: 'Rank',
 
     // Analytics View
     analyticsHeaderTitle: 'Financial Analytics & Charts',
