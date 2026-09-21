@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -64,29 +64,48 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     { id: 'Lainnya', label: t.paymentOther, icon: Tag },
   ];
 
+  const prevIsOpenRef = useRef(false);
+  const prevInitialIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (initialData) {
-      setAmountStr(initialData.amount ? initialData.amount.toLocaleString('id-ID') : '');
-      setSelectedCategoryId(initialData.categoryId);
-      try {
-        setDateStr(toLocalInputValue(new Date(initialData.date)));
-      } catch {
-        setDateStr(toLocalInputValue(new Date()));
-      }
-      setNotes(initialData.notes || '');
-      setPaymentMethod(initialData.paymentMethod || 'Tunai');
-      setIsDetailOpen(false);
-    } else {
-      setAmountStr('');
-      setSelectedCategoryId(categories[0]?.id || '');
-      setDateStr(toLocalInputValue(new Date()));
-      setNotes('');
-      setPaymentMethod('Tunai');
-      setIsDetailOpen(false);
+    const isOpening = !prevIsOpenRef.current && isOpen;
+    const isDifferentInitial = initialData?.id !== prevInitialIdRef.current;
+
+    prevIsOpenRef.current = isOpen;
+    prevInitialIdRef.current = initialData?.id;
+
+    if (!isOpen) {
+      return;
     }
-    setError('');
-    setIsConfirmDeleteOpen(false);
-  }, [initialData, categories, isOpen]);
+
+    // Hanya reset form saat modal baru saja dibuka atau target transaksi berubah
+    if (isOpening || isDifferentInitial) {
+      if (initialData) {
+        setAmountStr(initialData.amount ? initialData.amount.toLocaleString('id-ID') : '');
+        setSelectedCategoryId(initialData.categoryId);
+        try {
+          setDateStr(toLocalInputValue(new Date(initialData.date)));
+        } catch {
+          setDateStr(toLocalInputValue(new Date()));
+        }
+        setNotes(initialData.notes || '');
+        setPaymentMethod(initialData.paymentMethod || 'Tunai');
+        setIsDetailOpen(false);
+      } else {
+        setAmountStr('');
+        setSelectedCategoryId(categories[0]?.id || '');
+        setDateStr(toLocalInputValue(new Date()));
+        setNotes('');
+        setPaymentMethod('Tunai');
+        setIsDetailOpen(false);
+      }
+      setError('');
+      setIsConfirmDeleteOpen(false);
+    } else if (!selectedCategoryId && categories.length > 0) {
+      // Jika kategori default belum terpilih tetapi modal sudah terbuka, isi tanpa menghapus nominal
+      setSelectedCategoryId(categories[0]?.id || '');
+    }
+  }, [initialData, categories, isOpen, selectedCategoryId]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');

@@ -832,7 +832,7 @@ export function App() {
           <ErrorBoundary lang={language}>
             <Suspense fallback={<ViewLoaderFallback />}>
               <AnalyticsView
-                transactions={transactions}
+                transactions={allTransactionsRaw}
                 categories={sortedCategories}
                 darkMode={darkMode}
                 lang={language}

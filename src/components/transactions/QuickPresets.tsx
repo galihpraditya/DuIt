@@ -24,6 +24,8 @@ interface QuickPresetsProps {
   t: Translations;
 }
 
+const EMPTY_TXS: Transaction[] = [];
+
 export const QuickPresets: React.FC<QuickPresetsProps> = ({
   categories,
   transactions: fallbackTransactions,
@@ -37,7 +39,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
     []
   );
 
-  const transactions = recentTransactions !== undefined ? recentTransactions : fallbackTransactions || [];
+  const transactions = recentTransactions ?? fallbackTransactions ?? EMPTY_TXS;
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
