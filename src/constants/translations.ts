@@ -169,6 +169,38 @@ export interface Translations {
   noDataPeriod: string;
   noRankingData: string;
 
+  // Safe-to-Spend & Forecast
+  safeToSpendTitle: string;
+  safeToSpendDesc: string;
+  safeDailyLimitLabel: string;
+  remainingBudgetLabel: string;
+  projectedTotalLabel: string;
+  statusHealthy: string;
+  statusWarning: string;
+  statusCritical: string;
+  statusNoBudget: string;
+  setBudgetPrompt: string;
+  btnSetBudget: string;
+  pacingAhead: string;
+  pacingBehind: string;
+  pacingExact: string;
+  daysPassedLabel: string;
+  daysRemainingLabel: string;
+  budgetUsedLabel: string;
+  pastPeriodRecapTitle: string;
+  pastPeriodRecapDesc: string;
+  recapSurplus: string;
+  recapDeficit: string;
+  adviceHealthy: string;
+  adviceWarning: string;
+  adviceCritical: string;
+  topBurnerLabel: string;
+  avgReferenceLineLabel: string;
+  categoryBudgetLimitUsed: string;
+  categoryOverbudgetBadge: string;
+  adviceLabel: string;
+  timeElapsedLegend: string;
+
   // Settings Modal
   settingsTitle: string;
   settingsDesc: string;
@@ -442,15 +474,47 @@ export const translations: Record<Language, Translations> = {
     kpiFrequency: 'Frekuensi Belanja',
     kpiTimes: 'kali',
     kpiFreqDesc: 'Total catatan transaksi',
-    trendChartTitle: 'Tren Pengeluaran Waktu',
-    trendChartDesc: 'Grafik naik-turun pengeluaran harian/bulanan',
+    trendChartTitle: 'Tren Pengeluaran',
+    trendChartDesc: 'Pengeluaran harian dan bulanan',
     chartBar: 'Batang',
     chartArea: 'Area',
     categoryDistTitle: 'Distribusi Kategori',
-    categoryDistDesc: 'Proporsi pengeluaran berdasarkan jenis kategori',
-    rankingTitle: 'Peringkat Pengeluaran Kategori Terbanyak',
+    categoryDistDesc: 'Komposisi belanja per kategori',
+    rankingTitle: 'Peringkat Kategori',
     noDataPeriod: 'Tidak ada data pada rentang waktu ini',
     noRankingData: 'Tidak ada data untuk ditampilkan.',
+
+    // Safe-to-Spend & Forecast
+    safeToSpendTitle: 'Batas Belanja Aman & Proyeksi',
+    safeToSpendDesc: 'Panduan batas harian agar pengeluaran tidak melampaui anggaran bulan ini',
+    safeDailyLimitLabel: 'Batas Harian Aman',
+    remainingBudgetLabel: 'Sisa Anggaran',
+    projectedTotalLabel: 'Proyeksi Akhir Bulan',
+    statusHealthy: 'Laju Aman',
+    statusWarning: 'Perlu Waspada',
+    statusCritical: 'Risiko Overbudget',
+    statusNoBudget: 'Belum Ada Anggaran',
+    setBudgetPrompt: 'Atur limit anggaran kategori untuk mengaktifkan Safe-to-Spend & Proyeksi.',
+    btnSetBudget: 'Atur Anggaran',
+    pacingAhead: 'Laju belanja melebihi laju hari',
+    pacingBehind: 'Laju pengeluaran masih terkendali',
+    pacingExact: 'Laju belanja seimbang dengan waktu',
+    daysPassedLabel: 'Hari Berjalan',
+    daysRemainingLabel: 'Hari Tersisa',
+    budgetUsedLabel: 'Anggaran Terpakai',
+    pastPeriodRecapTitle: 'Rekapitulasi Anggaran Periode Ini',
+    pastPeriodRecapDesc: 'Perbandingan realisasi pengeluaran dengan target anggaran kategori',
+    recapSurplus: 'Surplus Hemat',
+    recapDeficit: 'Melebihi Target',
+    adviceHealthy: 'Pengeluaran masih dalam batas aman dengan alokasi harian yang terjaga.',
+    adviceWarning: 'Laju belanja melebihi laju hari. Prioritaskan kebutuhan pokok agar alokasi harian tetap aman.',
+    adviceCritical: 'Proyeksi pengeluaran melampaui target anggaran. Tahan belanja non-pokok dan evaluasi batas kategori.',
+    topBurnerLabel: 'Penyerap Anggaran Terbesar',
+    avgReferenceLineLabel: 'Rata-rata',
+    categoryBudgetLimitUsed: 'terpakai dari limit',
+    categoryOverbudgetBadge: 'Melebihi Limit',
+    adviceLabel: 'Saran',
+    timeElapsedLegend: 'Waktu berjalan',
 
     // Settings Modal
     settingsTitle: 'Pengaturan',
@@ -724,15 +788,47 @@ export const translations: Record<Language, Translations> = {
     kpiFrequency: 'Spending Frequency',
     kpiTimes: 'times',
     kpiFreqDesc: 'Total transaction count',
-    trendChartTitle: 'Spending Trend Over Time',
-    trendChartDesc: 'Daily and monthly expenditure trend',
+    trendChartTitle: 'Spending Trend',
+    trendChartDesc: 'Daily and monthly spending',
     chartBar: 'Bar',
     chartArea: 'Area',
     categoryDistTitle: 'Category Breakdown',
-    categoryDistDesc: 'Spending proportion by category',
-    rankingTitle: 'Top Spending Categories Ranking',
+    categoryDistDesc: 'Spending composition by category',
+    rankingTitle: 'Category Ranking',
     noDataPeriod: 'No transaction data in this timeframe',
     noRankingData: 'No data to display.',
+
+    // Safe-to-Spend & Forecast
+    safeToSpendTitle: 'Safe-to-Spend & Forecast',
+    safeToSpendDesc: 'Daily spending guide to stay within your monthly budget targets',
+    safeDailyLimitLabel: 'Daily Safe Limit',
+    remainingBudgetLabel: 'Remaining Budget',
+    projectedTotalLabel: 'Month-End Forecast',
+    statusHealthy: 'On Track',
+    statusWarning: 'Pacing High',
+    statusCritical: 'Overbudget Risk',
+    statusNoBudget: 'No Budget Set',
+    setBudgetPrompt: 'Set category budget limits to enable Safe-to-Spend & Forecast.',
+    btnSetBudget: 'Set Budget',
+    pacingAhead: 'Spending is outpacing the days',
+    pacingBehind: 'Spending pace is well controlled',
+    pacingExact: 'Spending is in sync with time',
+    daysPassedLabel: 'Days Elapsed',
+    daysRemainingLabel: 'Days Left',
+    budgetUsedLabel: 'Budget Used',
+    pastPeriodRecapTitle: 'Period Budget Recap',
+    pastPeriodRecapDesc: 'Comparison of actual spending against target category budgets',
+    recapSurplus: 'Budget Surplus',
+    recapDeficit: 'Over Target',
+    adviceHealthy: 'Spending is within safe limits with a steady daily allowance.',
+    adviceWarning: 'Spending is outpacing the calendar. Prioritize essentials to keep your daily limit on track.',
+    adviceCritical: 'Projected spending will exceed your monthly budget. Pause non-essential purchases and review category limits.',
+    topBurnerLabel: 'Top Burner Category',
+    avgReferenceLineLabel: 'Average',
+    categoryBudgetLimitUsed: 'used of limit',
+    categoryOverbudgetBadge: 'Over Limit',
+    adviceLabel: 'Recommendation',
+    timeElapsedLegend: 'Time elapsed',
 
     // Settings Modal
     settingsTitle: 'Settings',

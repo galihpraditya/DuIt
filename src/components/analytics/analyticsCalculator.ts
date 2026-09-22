@@ -52,6 +52,22 @@ export interface SmartPieSlice {
   count: number;
 }
 
+export interface SafeToSpendData {
+  totalMonthlyBudget: number;
+  currentSpent: number;
+  remainingBudget: number;
+  daysPassed: number;
+  daysRemaining: number;
+  totalDaysInMonth: number;
+  timeElapsedPercentage: number;
+  budgetSpentPercentage: number;
+  safeDailyLimit: number;
+  projectedTotal: number;
+  projectedVariance: number;
+  status: 'healthy' | 'warning' | 'critical' | 'no_budget';
+  hasBudget: boolean;
+}
+
 export const parseTxTime = (dateStr: string): number | null => {
   if (!dateStr) return null;
   try {
@@ -378,4 +394,62 @@ export function getSmartPieSlices(
   }
 
   return result;
+}
+
+export function calculateSafeToSpend(
+  categories: Category[],
+  currentSpent: number,
+  averagePerDay: number,
+  referenceDate: Date = new Date()
+): SafeToSpendData {
+  let totalMonthlyBudget = 0;
+  for (let i = 0; i < categories.length; i++) {
+    totalMonthlyBudget += categories[i].budgetLimit || 0;
+  }
+
+  const start = startOfMonth(referenceDate);
+  const end = endOfMonth(referenceDate);
+  const totalDaysInMonth = Math.max(1, differenceInCalendarDays(end, start) + 1);
+  const daysPassed = Math.min(totalDaysInMonth, Math.max(1, referenceDate.getDate()));
+  const daysRemaining = Math.max(1, totalDaysInMonth - daysPassed + 1);
+
+  const timeElapsedPercentage = Math.min(100, Math.round((daysPassed / totalDaysInMonth) * 100));
+  const remainingBudget = totalMonthlyBudget - currentSpent;
+  const budgetSpentPercentage =
+    totalMonthlyBudget > 0 ? Math.round((currentSpent / totalMonthlyBudget) * 100) : 0;
+
+  // Safe daily limit for remaining days
+  const safeDailyLimit =
+    totalMonthlyBudget > 0 && remainingBudget > 0 ? Math.round(remainingBudget / daysRemaining) : 0;
+
+  // Forecasted month-end spending based on current daily run-rate
+  const projectedTotal = Math.round(averagePerDay * totalDaysInMonth);
+  const projectedVariance = projectedTotal - totalMonthlyBudget;
+
+  let status: 'healthy' | 'warning' | 'critical' | 'no_budget' = 'no_budget';
+  if (totalMonthlyBudget > 0) {
+    if (remainingBudget <= 0 || projectedTotal > totalMonthlyBudget * 1.05) {
+      status = 'critical';
+    } else if (projectedTotal > totalMonthlyBudget * 0.9 || budgetSpentPercentage > timeElapsedPercentage + 15) {
+      status = 'warning';
+    } else {
+      status = 'healthy';
+    }
+  }
+
+  return {
+    totalMonthlyBudget,
+    currentSpent,
+    remainingBudget,
+    daysPassed,
+    daysRemaining,
+    totalDaysInMonth,
+    timeElapsedPercentage,
+    budgetSpentPercentage,
+    safeDailyLimit,
+    projectedTotal,
+    projectedVariance,
+    status,
+    hasBudget: totalMonthlyBudget > 0,
+  };
 }

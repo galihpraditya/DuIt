@@ -837,6 +837,7 @@ export function App() {
                 darkMode={darkMode}
                 lang={language}
                 t={t}
+                onNavigateToBudget={() => navigate('/budget')}
               />
             </Suspense>
           </ErrorBoundary>

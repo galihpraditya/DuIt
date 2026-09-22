@@ -10,11 +10,13 @@ import {
   type PeriodOption,
   calculatePeriodIntervals,
   calculateAnalytics,
+  calculateSafeToSpend,
 } from './analyticsCalculator';
 import { KpiCards } from './KpiCards';
 import { TrendChart } from './TrendChart';
 import { CategoryPieChart } from './CategoryPieChart';
 import { CategoryRankingTable } from './CategoryRankingTable';
+import { SafeToSpendCard } from './SafeToSpendCard';
 
 interface AnalyticsViewProps {
   transactions?: Transaction[];
@@ -22,6 +24,7 @@ interface AnalyticsViewProps {
   darkMode?: boolean;
   lang?: Language;
   t: Translations;
+  onNavigateToBudget?: () => void;
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
@@ -30,6 +33,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   darkMode = false,
   lang = 'id',
   t,
+  onNavigateToBudget,
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('this_month');
   const [customStartDate, setCustomStartDate] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
@@ -45,7 +49,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   // 2. Data Transaksi: Gunakan fallbackTransactions dari props jika tersedia, atau query Dexie secara mandiri
   const dexieTransactions = useLiveQuery(
-    () => (fallbackTransactions !== undefined ? undefined : db.transactions.toArray()),
+    () => (fallbackTransactions !== undefined ? Promise.resolve([] as Transaction[]) : db.transactions.toArray()),
     [fallbackTransactions]
   );
 
@@ -94,6 +98,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     trendData,
     txCount,
   } = analyticsData;
+
+  const isCurrentMonth = selectedPeriod === 'this_month';
+
+  const safeData = useMemo(() => {
+    return calculateSafeToSpend(
+      categories,
+      currentTotal,
+      averagePerDay,
+      isCurrentMonth ? new Date() : currentInterval.start
+    );
+  }, [categories, currentTotal, averagePerDay, isCurrentMonth, currentInterval.start]);
 
   return (
     <div className="space-y-6">
@@ -162,6 +177,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         )}
       </div>
 
+      {/* Safe-to-Spend & Forecast Burn Rate Card */}
+      <SafeToSpendCard
+        safeData={safeData}
+        isCurrentMonth={isCurrentMonth}
+        onNavigateToBudget={onNavigateToBudget}
+        lang={lang}
+        t={t}
+      />
+
       {/* KPI Cards Grid (Memoized) */}
       <KpiCards
         currentTotal={currentTotal}
@@ -179,6 +203,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <div className="lg:col-span-7 min-w-0">
           <TrendChart
             trendData={trendData}
+            averagePerDay={averagePerDay}
             chartType={chartType}
             onChangeChartType={setChartType}
             darkMode={darkMode}
@@ -203,6 +228,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       <CategoryRankingTable
         categoryData={categoryData}
         currentTotal={currentTotal}
+        categories={categories}
         lang={lang}
         t={t}
       />

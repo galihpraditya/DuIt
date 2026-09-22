@@ -8,6 +8,7 @@ import {
   Tooltip,
   AreaChart,
   Area,
+  ReferenceLine,
 } from 'recharts';
 import { BarChart3, Zap } from 'lucide-react';
 import type { TrendDataEntry } from './analyticsCalculator';
@@ -16,6 +17,7 @@ import type { Language, Translations } from '../../constants/translations';
 
 interface TrendChartProps {
   trendData: TrendDataEntry[];
+  averagePerDay?: number;
   chartType: 'bar' | 'area';
   onChangeChartType: (type: 'bar' | 'area') => void;
   darkMode?: boolean;
@@ -25,6 +27,7 @@ interface TrendChartProps {
 
 export const TrendChart: React.FC<TrendChartProps> = React.memo(({
   trendData,
+  averagePerDay,
   chartType,
   onChangeChartType,
   darkMode = false,
@@ -108,6 +111,21 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
+                {averagePerDay && averagePerDay > 0 && (
+                  <ReferenceLine
+                    y={averagePerDay}
+                    stroke="#f59e0b"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `${t.avgReferenceLineLabel}: ${formatIDR(averagePerDay, true, lang)}`,
+                      fill: '#f59e0b',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      position: 'insideTopRight',
+                    }}
+                  />
+                )}
                 <Bar
                   dataKey="total"
                   fill="#10b981"
@@ -140,6 +158,21 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
+                {averagePerDay && averagePerDay > 0 && (
+                  <ReferenceLine
+                    y={averagePerDay}
+                    stroke="#f59e0b"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `${t.avgReferenceLineLabel}: ${formatIDR(averagePerDay, true, lang)}`,
+                      fill: '#f59e0b',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      position: 'insideTopRight',
+                    }}
+                  />
+                )}
                 <Area
                   type="monotone"
                   dataKey="total"
