@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, Settings, Plus } from 'lucide-react';
+import { Wallet, Settings, Plus, RefreshCw } from 'lucide-react';
 import type { Translations } from '../../constants/translations';
 
 interface NavbarProps {
@@ -7,6 +7,8 @@ interface NavbarProps {
   onOpenNewTransaction: () => void;
   activeTab: string;
   onSelectTab: (tab: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   t: Translations;
 }
 
@@ -15,6 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewTransaction,
   activeTab,
   onSelectTab,
+  onRefresh,
+  isRefreshing = false,
   t,
 }) => {
   const navItems = [
@@ -64,8 +68,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Action Buttons: Settings & Tambah Transaksi */}
-          <div className="flex items-center space-x-2 sm:space-x-2.5">
+          {/* Action Buttons: Refresh, Sensor Nominal, Settings & Tambah Transaksi */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            {/* Refresh Button */}
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95 flex items-center justify-center group cursor-pointer disabled:opacity-70"
+                title={t.refreshData}
+                aria-label={t.refreshData}
+              >
+                <RefreshCw
+                  className={`w-4 h-4 transition-transform ${
+                    isRefreshing ? 'animate-spin text-emerald-600 dark:text-emerald-400' : 'group-hover:rotate-90 duration-300'
+                  }`}
+                />
+              </button>
+            )}
+
             {/* Settings Button (Gear icon with tooltip & active indicator) */}
             <button
               onClick={onOpenSettings}

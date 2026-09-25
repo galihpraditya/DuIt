@@ -19,7 +19,7 @@ import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
 import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag, Layers } from 'lucide-react';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag, Layers, Eye, EyeOff } from 'lucide-react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -163,6 +163,100 @@ export function App() {
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((item) => item.id !== id));
   }, []);
+
+  // Privacy / Sensor Nominal State (persisted in localStorage)
+  const [hideNominals, setHideNominals] = useState<boolean>(() => {
+    return localStorage.getItem('duit_hide_nominals') === 'true';
+  });
+
+  const handleToggleHideNominals = useCallback(() => {
+    setHideNominals((prev) => {
+      const next = !prev;
+      localStorage.setItem('duit_hide_nominals', String(next));
+      return next;
+    });
+  }, []);
+
+  // Manual Refresh & Cloud Sync State
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const handleRefreshData = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    const startTimestamp = Date.now();
+    try {
+      // 1. Dapatkan user session secara instan dari state aktif atau cache auth
+      let activeUserId = currentUser?.id;
+      if (!activeUserId) {
+        const freshUser = await authService.getCurrentUser();
+        if (freshUser?.id) {
+          setCurrentUser(freshUser);
+          activeUserId = freshUser.id;
+        }
+      }
+
+      if (activeUserId) {
+        const res = await syncService.syncAll(activeUserId);
+        if (!res.success) {
+          throw new Error(res.error || t.cloudSyncFailed);
+        }
+        showToast(t.cloudSyncSuccess, 'success');
+      } else {
+        // User belum masuk ke akun Supabase (offline/guest)
+        setCurrentUser(null);
+        await db.transactions.count();
+        showToast(
+          language === 'id'
+            ? 'Data lokal tersimpan. Masuk ke akun Anda untuk sinkronisasi cloud.'
+            : 'Local data saved. Sign in to your account for cloud sync.',
+          'info'
+        );
+      }
+    } catch (err: any) {
+      console.error('Refresh/Sync error:', err);
+      showToast(err?.message || t.cloudSyncFailed || 'Gagal menyinkronkan data', 'error');
+    } finally {
+      const elapsed = Date.now() - startTimestamp;
+      const remainingDelay = Math.max(0, 250 - elapsed);
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, remainingDelay);
+    }
+  }, [isRefreshing, currentUser, language, showToast, t.cloudSyncFailed, t.cloudSyncSuccess]);
+
+  // Handle Android Native Hardware Back Button (Capacitor)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let isSubscribed = true;
+    const backListenerPromise = CapacitorApp.addListener('backButton', () => {
+      if (!isSubscribed) return;
+      if (isTransactionModalOpen || isExcelModalOpen || isAuthModalOpen || isMonthPickerOpen) {
+        if (isMonthPickerOpen) {
+          setIsMonthPickerOpen(false);
+        } else {
+          handleCloseModals();
+        }
+      } else if (activeTab !== 'transactions') {
+        navigate('/transactions');
+      } else {
+        CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      isSubscribed = false;
+      backListenerPromise.then((h) => h.remove());
+    };
+  }, [
+    isTransactionModalOpen,
+    isExcelModalOpen,
+    isAuthModalOpen,
+    isMonthPickerOpen,
+    activeTab,
+    handleCloseModals,
+    navigate,
+  ]);
 
   // Initialize Default Data on first launch & sync auth state
   useEffect(() => {
@@ -691,17 +785,21 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
-      {/* Top Navbar */}
-      <Navbar
-        onOpenSettings={() => navigate('/settings')}
-        onOpenNewTransaction={() => {
-          setPresetDraft(null);
-          navigate('/transactions/new');
-        }}
-        activeTab={activeTab}
-        onSelectTab={handleTabNavigation}
-        t={t}
-      />
+      {/* Top Navbar (hidden on mobile when full-page transaction form is active) */}
+      <div className={isTransactionModalOpen ? 'hidden sm:block' : 'block'}>
+        <Navbar
+          onOpenSettings={() => navigate('/settings')}
+          onOpenNewTransaction={() => {
+            setPresetDraft(null);
+            navigate('/transactions/new');
+          }}
+          activeTab={activeTab}
+          onSelectTab={handleTabNavigation}
+          onRefresh={handleRefreshData}
+          isRefreshing={isRefreshing}
+          t={t}
+        />
+      </div>
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
@@ -718,6 +816,20 @@ export function App() {
                   <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 tracking-wide">
                     {isAllTime ? t.totalExpenseAllTime : t.totalExpenseThisMonth}
                   </span>
+                  {/* Privacy / Sensor Nominal Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleHideNominals}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
+                    title={hideNominals ? t.showNominal : t.hideNominal}
+                    aria-label={hideNominals ? t.showNominal : t.hideNominal}
+                  >
+                    {hideNominals ? (
+                      <EyeOff className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
 
                 {/* Month Navigator */}
@@ -766,7 +878,7 @@ export function App() {
                 {/* Left: Total */}
                 <div className="lg:col-span-7">
                   <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
-                    {formatIDR(currentMonthTotal, false, language)}
+                    {formatIDR(currentMonthTotal, false, language, hideNominals)}
                   </div>
                 </div>
 
@@ -778,7 +890,7 @@ export function App() {
                       <span className="truncate">{t.kpiDailyAverage}</span>
                     </div>
                     <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
-                      {formatIDR(currentMonthDailyAverage, false, language)}
+                      {formatIDR(currentMonthDailyAverage, false, language, hideNominals)}
                     </div>
                   </div>
 
@@ -801,6 +913,7 @@ export function App() {
               categories={sortedCategories}
               transactions={transactions}
               onSelectPreset={handleSelectQuickPreset}
+              hideNominals={hideNominals}
               lang={language}
               t={t}
             />
@@ -819,10 +932,15 @@ export function App() {
             }}
             onDeleteTransaction={handleDeleteTransaction}
             onOpenNewTransaction={() => {
+              if (currentUser?.id) {
+                // Background fast refresh before entering transaction input
+                syncService.syncAll(currentUser.id);
+              }
               setPresetDraft(null);
               navigate('/transactions/new');
             }}
             onAddTransactionOnDate={handleAddTransactionOnDate}
+            hideNominals={hideNominals}
             lang={language}
             t={t}
           />
@@ -869,6 +987,7 @@ export function App() {
                 sortMode={categorySortMode}
                 onChangeSortMode={handleSortModeChange}
                 onReorderCategories={handleReorderCategories}
+                hideNominals={hideNominals}
                 lang={language}
                 t={t}
               />
@@ -915,15 +1034,21 @@ export function App() {
       </main>
 
       {/* Mobile Floating Bottom Navigation (Symmetrical 5 Direct Tabs) */}
-      <BottomNav
-        activeTab={activeTab}
-        onSelectTab={handleTabNavigation}
-        onOpenNewTransaction={() => {
-          setPresetDraft(null);
-          navigate('/transactions/new');
-        }}
-        t={t}
-      />
+      {!isTransactionModalOpen && (
+        <BottomNav
+          activeTab={activeTab}
+          onSelectTab={handleTabNavigation}
+          onOpenNewTransaction={() => {
+            if (currentUser?.id) {
+              // Background fast refresh before entering transaction input
+              syncService.syncAll(currentUser.id);
+            }
+            setPresetDraft(null);
+            navigate('/transactions/new');
+          }}
+          t={t}
+        />
+      )}
 
       {/* Transaction Modal (Add / Edit) */}
       <TransactionModal

@@ -20,6 +20,7 @@ interface QuickPresetsProps {
   categories: Category[];
   transactions?: Transaction[];
   onSelectPreset: (preset: QuickPresetItem) => void;
+  hideNominals?: boolean;
   lang?: Language;
   t: Translations;
 }
@@ -30,6 +31,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
   categories,
   transactions: fallbackTransactions,
   onSelectPreset,
+  hideNominals = false,
   lang = 'id',
   t,
 }) => {
@@ -186,7 +188,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
               {preset.label}
             </span>
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-              {formatIDR(preset.amount, true, lang)}
+              {formatIDR(preset.amount, true, lang, hideNominals)}
             </span>
           </button>
         );

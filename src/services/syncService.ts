@@ -3,37 +3,46 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { db, DEFAULT_CATEGORIES } from '../db/database';
 import type { Category, Transaction, Budget, RecurringExpense } from '../types';
 
+let ongoingSync: Promise<{ success: boolean; error?: string }> | null = null;
+
 export const syncService = {
   /**
-   * Menyelaraskan seluruh data lokal dengan Supabase Cloud
+   * Menyelaraskan seluruh data lokal dengan Supabase Cloud secara cepat dan konkuren
    */
   async syncAll(userId: string): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !userId) {
       return { success: true };
     }
 
-    try {
-      // 1. SYNC CATEGORIES
-      await this.syncCategories(userId);
-
-      // 2. SYNC TRANSACTIONS
-      await this.syncTransactions(userId);
-
-      // 3. SYNC BUDGETS
-      await this.syncBudgets(userId);
-
-      // 4. SYNC RECURRING EXPENSES
-      await this.syncRecurringExpenses(userId);
-
-      return { success: true };
-    } catch (err: any) {
-      console.error('Data sync failed:', err);
-      return { success: false, error: err.message || 'Gagal menyelaraskan data cloud' };
+    // Jika proses sinkronisasi sedang berjalan, gunakan promise yang sama (deduplikasi in-flight)
+    if (ongoingSync) {
+      return ongoingSync;
     }
+
+    ongoingSync = (async () => {
+      try {
+        // Jalankan sinkronisasi seluruh tabel secara paralel (Promise.all) agar jauh lebih cepat
+        await Promise.all([
+          this.syncCategories(userId),
+          this.syncTransactions(userId),
+          this.syncBudgets(userId),
+          this.syncRecurringExpenses(userId),
+        ]);
+
+        return { success: true };
+      } catch (err: any) {
+        console.error('Data sync failed:', err);
+        return { success: false, error: err.message || 'Gagal menyelaraskan data cloud' };
+      } finally {
+        ongoingSync = null;
+      }
+    })();
+
+    return ongoingSync;
   },
 
   /**
-   * Sinkronisasi Kategori Dua Arah
+   * Sinkronisasi Kategori Dua Arah (High Performance with bulkPut)
    */
   async syncCategories(userId: string) {
     const { data: cloudCats, error } = await supabase
@@ -47,11 +56,12 @@ export const syncService = {
 
     if (cloudCats && cloudCats.length > 0) {
       const cloudIds = new Set(cloudCats.map((c) => c.id));
-      
-      // Update/Insert kategori dari cloud ke local Dexie
-      for (const cc of cloudCats) {
-        const localExisting = localCats.find((l) => l.id === cc.id);
-        const catObj: Category = {
+      const localMap = new Map(localCats.map((l) => [l.id, l]));
+
+      // Update/Insert kategori dari cloud ke local Dexie secara atomic dengan bulkPut
+      const catObjects: Category[] = cloudCats.map((cc) => {
+        const localExisting = localMap.get(cc.id);
+        return {
           id: cc.id,
           name: cc.name,
           icon: cc.icon,
@@ -61,17 +71,27 @@ export const syncService = {
           order: typeof cc.order_index === 'number' ? cc.order_index : localExisting?.order,
           createdAt: cc.created_at,
         };
-        await db.categories.put(catObj);
-      }
+      });
+      await db.categories.bulkPut(catObjects);
 
-      // Hapus kategori lokal kustom yang sudah tidak ada di cloud
-      for (const localCat of localCats) {
-        if (!cloudIds.has(localCat.id) && !localCat.isDefault) {
-          await db.categories.delete(localCat.id);
-        }
+      // Unggah kategori kustom lokal yang belum ada di cloud
+      const unsyncedLocal = localCats.filter((l) => !cloudIds.has(l.id));
+      if (unsyncedLocal.length > 0) {
+        const payload = unsyncedLocal.map((cat) => ({
+          id: cat.id,
+          user_id: userId,
+          name: cat.name,
+          icon: cat.icon,
+          color: cat.color,
+          budget_limit: cat.budgetLimit || 0,
+          is_default: cat.isDefault || false,
+          order_index: typeof cat.order === 'number' ? cat.order : 0,
+          created_at: cat.createdAt || new Date().toISOString(),
+        }));
+        await supabase.from('categories').upsert(payload);
       }
     } else if (localCats.length > 0) {
-      // Jika cloud masih kosong (user baru), upload data default lokal ke cloud
+      // Jika cloud masih kosong, upload seluruh data lokal ke cloud
       const payload = localCats.map((cat) => ({
         id: cat.id,
         user_id: userId,
@@ -80,6 +100,7 @@ export const syncService = {
         color: cat.color,
         budget_limit: cat.budgetLimit || 0,
         is_default: cat.isDefault || false,
+        order_index: typeof cat.order === 'number' ? cat.order : 0,
         created_at: cat.createdAt || new Date().toISOString(),
       }));
       await supabase.from('categories').upsert(payload);
@@ -87,7 +108,7 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Transaksi Dua Arah (Reconciliation)
+   * Sinkronisasi Transaksi Dua Arah (High Performance with bulkPut)
    */
   async syncTransactions(userId: string) {
     const { data: cloudTxs, error } = await supabase
@@ -101,29 +122,37 @@ export const syncService = {
     const cloudIds = new Set((cloudTxs || []).map((t) => t.id));
 
     if (cloudTxs && cloudTxs.length > 0) {
-      // 1. Simpan/perbarui data dari cloud ke lokal
-      for (const ctx of cloudTxs) {
-        const txObj: Transaction = {
-          id: ctx.id,
-          amount: Number(ctx.amount),
-          date: ctx.date,
-          categoryId: ctx.category_id,
-          notes: ctx.notes || undefined,
-          paymentMethod: ctx.payment_method || undefined,
-          tags: ctx.tags || undefined,
-          createdAt: ctx.created_at,
-        };
-        await db.transactions.put(txObj);
-      }
+      // 1. Simpan/perbarui data dari cloud ke lokal secara atomic dalam 1 transaksi IndexedDB
+      const txObjects: Transaction[] = cloudTxs.map((ctx) => ({
+        id: ctx.id,
+        amount: Number(ctx.amount),
+        date: ctx.date,
+        categoryId: ctx.category_id,
+        notes: ctx.notes || undefined,
+        paymentMethod: ctx.payment_method || undefined,
+        tags: ctx.tags || undefined,
+        createdAt: ctx.created_at,
+      }));
+      await db.transactions.bulkPut(txObjects);
 
-      // 2. Hapus transaksi lokal yang sudah dihapus di cloud
-      for (const localTx of localTxs) {
-        if (!cloudIds.has(localTx.id)) {
-          await db.transactions.delete(localTx.id);
-        }
+      // 2. Unggah transaksi lokal yang belum ada di cloud
+      const unsyncedLocal = localTxs.filter((l) => !cloudIds.has(l.id));
+      if (unsyncedLocal.length > 0) {
+        const payload = unsyncedLocal.map((tx) => ({
+          id: tx.id,
+          user_id: userId,
+          amount: tx.amount,
+          date: tx.date,
+          category_id: tx.categoryId,
+          notes: tx.notes || null,
+          payment_method: tx.paymentMethod || null,
+          tags: tx.tags || null,
+          created_at: tx.createdAt || new Date().toISOString(),
+        }));
+        await supabase.from('transactions').upsert(payload);
       }
     } else if (localTxs.length > 0) {
-      // Jika cloud masih kosong, unggah transaksi offline lokal pertama kali
+      // Jika cloud masih kosong, unggah seluruh transaksi lokal
       const payload = localTxs.map((tx) => ({
         id: tx.id,
         user_id: userId,
@@ -140,7 +169,7 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Anggaran (Budgets)
+   * Sinkronisasi Anggaran (Budgets - High Performance with bulkPut)
    */
   async syncBudgets(userId: string) {
     const { data: cloudBudgets, error } = await supabase
@@ -154,20 +183,24 @@ export const syncService = {
 
     if (cloudBudgets && cloudBudgets.length > 0) {
       const cloudIds = new Set(cloudBudgets.map((b) => b.id));
-      for (const cb of cloudBudgets) {
-        const bObj: Budget = {
-          id: cb.id,
-          categoryId: cb.category_id || undefined,
-          amount: Number(cb.amount),
-          month: cb.month,
-        };
-        await db.budgets.put(bObj);
-      }
+      const budgetObjects: Budget[] = cloudBudgets.map((cb) => ({
+        id: cb.id,
+        categoryId: cb.category_id || undefined,
+        amount: Number(cb.amount),
+        month: cb.month,
+      }));
+      await db.budgets.bulkPut(budgetObjects);
 
-      for (const lb of localBudgets) {
-        if (!cloudIds.has(lb.id)) {
-          await db.budgets.delete(lb.id);
-        }
+      const unsyncedBudgets = localBudgets.filter((b) => !cloudIds.has(b.id));
+      if (unsyncedBudgets.length > 0) {
+        const payload = unsyncedBudgets.map((b) => ({
+          id: b.id,
+          user_id: userId,
+          category_id: b.categoryId || null,
+          amount: b.amount,
+          month: b.month,
+        }));
+        await supabase.from('budgets').upsert(payload);
       }
     } else if (localBudgets.length > 0) {
       const payload = localBudgets.map((b) => ({
@@ -182,7 +215,7 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Pengeluaran Berulang (Recurring Expenses)
+   * Sinkronisasi Pengeluaran Berulang (Recurring Expenses - High Performance with bulkPut)
    */
   async syncRecurringExpenses(userId: string) {
     const { data: cloudRec, error } = await supabase
@@ -196,24 +229,32 @@ export const syncService = {
 
     if (cloudRec && cloudRec.length > 0) {
       const cloudIds = new Set(cloudRec.map((r) => r.id));
-      for (const cr of cloudRec) {
-        const rObj: RecurringExpense = {
-          id: cr.id,
-          title: cr.title,
-          amount: Number(cr.amount),
-          categoryId: cr.category_id,
-          frequency: cr.frequency as any,
-          nextDueDate: cr.next_due_date,
-          isActive: cr.is_active,
-          notes: cr.notes || undefined,
-        };
-        await db.recurringExpenses.put(rObj);
-      }
+      const recObjects: RecurringExpense[] = cloudRec.map((cr) => ({
+        id: cr.id,
+        title: cr.title,
+        amount: Number(cr.amount),
+        categoryId: cr.category_id,
+        frequency: cr.frequency as any,
+        nextDueDate: cr.next_due_date,
+        isActive: cr.is_active,
+        notes: cr.notes || undefined,
+      }));
+      await db.recurringExpenses.bulkPut(recObjects);
 
-      for (const lr of localRec) {
-        if (!cloudIds.has(lr.id)) {
-          await db.recurringExpenses.delete(lr.id);
-        }
+      const unsyncedRec = localRec.filter((r) => !cloudIds.has(r.id));
+      if (unsyncedRec.length > 0) {
+        const payload = unsyncedRec.map((r) => ({
+          id: r.id,
+          user_id: userId,
+          title: r.title,
+          amount: r.amount,
+          category_id: r.categoryId,
+          frequency: r.frequency,
+          next_due_date: r.nextDueDate,
+          is_active: r.isActive,
+          notes: r.notes || null,
+        }));
+        await supabase.from('recurring_expenses').upsert(payload);
       }
     } else if (localRec.length > 0) {
       const payload = localRec.map((r) => ({

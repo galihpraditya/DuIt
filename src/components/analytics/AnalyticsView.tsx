@@ -77,8 +77,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     locale,
   ]);
 
+  const isCurrentMonth = selectedPeriod === 'this_month';
+
+  const safeData = useMemo(() => {
+    if (!analyticsData) return null;
+    return calculateSafeToSpend(
+      categories,
+      analyticsData.currentTotal,
+      analyticsData.averagePerDay,
+      isCurrentMonth ? new Date() : currentInterval.start
+    );
+  }, [categories, analyticsData, isCurrentMonth, currentInterval.start]);
+
   // Hanya tampilkan loader jika data awal Dexie belum tersedia sama sekali pada cold load
-  if (!analyticsData) {
+  if (!analyticsData || !safeData) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4">
         <Loader2 className="w-9 h-9 text-emerald-500 animate-spin" />
@@ -98,17 +110,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     trendData,
     txCount,
   } = analyticsData;
-
-  const isCurrentMonth = selectedPeriod === 'this_month';
-
-  const safeData = useMemo(() => {
-    return calculateSafeToSpend(
-      categories,
-      currentTotal,
-      averagePerDay,
-      isCurrentMonth ? new Date() : currentInterval.start
-    );
-  }, [categories, currentTotal, averagePerDay, isCurrentMonth, currentInterval.start]);
 
   return (
     <div className="space-y-6">

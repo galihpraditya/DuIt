@@ -25,7 +25,13 @@ const enCurrencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-export function formatIDR(amount: number, compact = false, lang: Language = 'id'): string {
+export const MASKED_NOMINAL = 'Rp ••••••';
+
+export function formatIDR(amount: number, compact = false, lang: Language = 'id', hideNominal = false): string {
+  if (hideNominal) {
+    return MASKED_NOMINAL;
+  }
+
   if (compact && Math.abs(amount) >= 1000000) {
     const unit = lang === 'en' ? 'M' : 'jt';
     return `Rp ${(amount / 1000000).toFixed(1).replace(/\.0$/, '')} ${unit}`;

@@ -15,6 +15,7 @@ interface TransactionListProps {
   onDeleteTransaction?: (id: string) => void;
   onOpenNewTransaction: () => void;
   onAddTransactionOnDate?: (dateStr: string) => void;
+  hideNominals?: boolean;
   lang?: Language;
   t: Translations;
 }
@@ -44,6 +45,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onEditTransaction,
   onOpenNewTransaction,
   onAddTransactionOnDate,
+  hideNominals = false,
   lang = 'id',
   t,
 }) => {
@@ -293,7 +295,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <div className="ml-auto shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400 pl-2">
             {filteredTransactions.length} {lang === 'en' ? 'txs' : 'transaksi'} (Total:{' '}
             <span className="font-bold text-rose-600 dark:text-rose-400">
-              {formatIDR(totalFilteredExpense, false, lang)}
+              {formatIDR(totalFilteredExpense, false, lang, hideNominals)}
             </span>
             )
           </div>
@@ -357,7 +359,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   </span>
                 </button>
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  − {formatIDR(group.subtotal, false, lang)}
+                  − {formatIDR(group.subtotal, false, lang, hideNominals)}
                 </div>
               </div>
 
@@ -414,7 +416,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                         <div className="text-right">
                           <div className="text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 flex items-center justify-end">
                             <ArrowDownRight className="w-3.5 h-3.5 mr-0.5 inline" />
-                            <span>{formatIDR(tx.amount, false, lang)}</span>
+                            <span>{formatIDR(tx.amount, false, lang, hideNominals)}</span>
                           </div>
                         </div>
                       </div>

@@ -312,6 +312,22 @@ export interface Translations {
   databaseStatus: string;
   statusConnected: string;
   statusLocalOnly: string;
+
+  // Privacy & Sensor Nominal
+  hideNominal: string;
+  showNominal: string;
+  nominalHidden: string;
+  nominalVisible: string;
+
+  // Refresh & Sync
+  refreshData: string;
+  refreshing: string;
+  dataRefreshed: string;
+  cloudSyncSuccess: string;
+  cloudSyncFailed: string;
+
+  // Mobile Navigation
+  back: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -628,6 +644,22 @@ export const translations: Record<Language, Translations> = {
     databaseStatus: 'Status Penyimpanan',
     statusConnected: 'Tersinkronisasi ke Cloud (Supabase)',
     statusLocalOnly: 'Penyimpanan Offline Lokal (IndexedDB)',
+
+    // Privacy & Sensor Nominal
+    hideNominal: 'Sembunyikan nominal',
+    showNominal: 'Tampilkan nominal',
+    nominalHidden: 'Nominal disembunyikan',
+    nominalVisible: 'Nominal ditampilkan',
+
+    // Refresh & Sync
+    refreshData: 'Segarkan data',
+    refreshing: 'Menyegarkan...',
+    dataRefreshed: 'Data lokal berhasil disegarkan!',
+    cloudSyncSuccess: 'Data berhasil disinkronkan dengan cloud!',
+    cloudSyncFailed: 'Gagal menyinkronkan data.',
+
+    // Mobile Navigation
+    back: 'Kembali',
   },
   en: {
     appName: 'DuIt',
@@ -941,6 +973,22 @@ export const translations: Record<Language, Translations> = {
     databaseStatus: 'Storage Status',
     statusConnected: 'Synchronized with Cloud (Supabase)',
     statusLocalOnly: 'Local Offline Storage (IndexedDB)',
+
+    // Privacy & Sensor Nominal
+    hideNominal: 'Hide amounts',
+    showNominal: 'Show amounts',
+    nominalHidden: 'Amounts hidden',
+    nominalVisible: 'Amounts visible',
+
+    // Refresh & Sync
+    refreshData: 'Refresh data',
+    refreshing: 'Refreshing...',
+    dataRefreshed: 'Local data refreshed!',
+    cloudSyncSuccess: 'Data synchronized with cloud!',
+    cloudSyncFailed: 'Failed to sync data.',
+
+    // Mobile Navigation
+    back: 'Back',
   },
 };
 

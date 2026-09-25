@@ -168,16 +168,16 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   return (
     <>
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex sm:items-center items-end justify-center sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div 
-          className="glass-modal rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+          className="glass-modal rounded-t-3xl sm:rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           
           {/* Header Kategori */}
-          <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 shrink-0 space-y-4">
+          <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 shrink-0 space-y-3 sm:space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center space-x-3.5 min-w-0">
                 <div
