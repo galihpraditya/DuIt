@@ -5,9 +5,45 @@ import type { Category, Transaction, Budget, RecurringExpense } from '../types';
 
 let ongoingSync: Promise<{ success: boolean; error?: string }> | null = null;
 
+/**
+ * Melakukan upsert data ke Supabase secara aman.
+ * Mendukung skema baru (composite PK: id, user_id) dengan fallback otomatis
+ * ke skema legacy (single PK: id) jika backend belum dimigrasi.
+ * Melempar error jika operasi gagal agar proses sync tidak berjalan 'silent fail'.
+ */
+export async function safeUpsert(table: string, payload: any[]) {
+  if (!payload || payload.length === 0) return;
+
+  // 1. Coba upsert dengan onConflict: 'id, user_id' (skema modern multi-user)
+  const { error: primaryError } = await supabase
+    .from(table)
+    .upsert(payload, { onConflict: 'id, user_id' });
+
+  if (!primaryError) {
+    return;
+  }
+
+  // 2. Jika skema database belum memiliki constraint composite (id, user_id) -> PostgreSQL error 42P10
+  if (primaryError.code === '42P10') {
+    const { error: fallbackError } = await supabase
+      .from(table)
+      .upsert(payload, { onConflict: 'id' });
+
+    if (fallbackError) {
+      console.error(`[SyncService] Fallback upsert failed on ${table}:`, fallbackError);
+      throw new Error(`Gagal menyinkronkan ${table}: ${fallbackError.message}`);
+    }
+    return;
+  }
+
+  console.error(`[SyncService] Upsert error on ${table}:`, primaryError);
+  throw new Error(`Gagal menyinkronkan ${table}: ${primaryError.message}`);
+}
+
 export const syncService = {
   /**
-   * Menyelaraskan seluruh data lokal dengan Supabase Cloud secara cepat dan konkuren
+   * Menyelaraskan seluruh data lokal dengan Supabase Cloud secara cepat dan terurut aman.
+   * Kategori disinkronkan terlebih dahulu agar transaksi yang merujuk category_id tidak gagal.
    */
   async syncAll(userId: string): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !userId) {
@@ -21,9 +57,11 @@ export const syncService = {
 
     ongoingSync = (async () => {
       try {
-        // Jalankan sinkronisasi seluruh tabel secara paralel (Promise.all) agar jauh lebih cepat
+        // 1. Sinkronisasi Kategori DAHULU agar relasi kategori valid untuk transaksi & anggaran
+        await this.syncCategories(userId);
+
+        // 2. Sinkronisasi Transaksi, Anggaran, dan Pengeluaran Berulang secara konkuren
         await Promise.all([
-          this.syncCategories(userId),
           this.syncTransactions(userId),
           this.syncBudgets(userId),
           this.syncRecurringExpenses(userId),
@@ -42,15 +80,18 @@ export const syncService = {
   },
 
   /**
-   * Sinkronisasi Kategori Dua Arah (High Performance with bulkPut)
+   * Sinkronisasi Kategori Dua Arah (High Performance with bulkPut & safeUpsert)
    */
   async syncCategories(userId: string) {
-    const { data: cloudCats, error } = await supabase
+    const { data: cloudCats, error: fetchErr } = await supabase
       .from('categories')
       .select('*')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    if (fetchErr) {
+      console.error('[SyncService] Fetch cloud categories error:', fetchErr);
+      throw fetchErr;
+    }
 
     const localCats = await db.categories.toArray();
 
@@ -88,7 +129,7 @@ export const syncService = {
           order_index: typeof cat.order === 'number' ? cat.order : 0,
           created_at: cat.createdAt || new Date().toISOString(),
         }));
-        await supabase.from('categories').upsert(payload);
+        await safeUpsert('categories', payload);
       }
     } else if (localCats.length > 0) {
       // Jika cloud masih kosong, upload seluruh data lokal ke cloud
@@ -103,20 +144,24 @@ export const syncService = {
         order_index: typeof cat.order === 'number' ? cat.order : 0,
         created_at: cat.createdAt || new Date().toISOString(),
       }));
-      await supabase.from('categories').upsert(payload);
+      await safeUpsert('categories', payload);
     }
   },
 
   /**
-   * Sinkronisasi Transaksi Dua Arah (High Performance with bulkPut)
+   * Sinkronisasi Transaksi Dua Arah (High Performance with bulkPut & safeUpsert)
+   * Menyimpan transaksi lokal (termasuk yang dicatat saat guest) ke cloud saat pengguna login.
    */
   async syncTransactions(userId: string) {
-    const { data: cloudTxs, error } = await supabase
+    const { data: cloudTxs, error: fetchErr } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    if (fetchErr) {
+      console.error('[SyncService] Fetch cloud transactions error:', fetchErr);
+      throw fetchErr;
+    }
 
     const localTxs = await db.transactions.toArray();
     const cloudIds = new Set((cloudTxs || []).map((t) => t.id));
@@ -135,7 +180,7 @@ export const syncService = {
       }));
       await db.transactions.bulkPut(txObjects);
 
-      // 2. Unggah transaksi lokal yang belum ada di cloud
+      // 2. Unggah transaksi lokal (misal dibuat saat guest) yang belum ada di cloud
       const unsyncedLocal = localTxs.filter((l) => !cloudIds.has(l.id));
       if (unsyncedLocal.length > 0) {
         const payload = unsyncedLocal.map((tx) => ({
@@ -149,7 +194,7 @@ export const syncService = {
           tags: tx.tags || null,
           created_at: tx.createdAt || new Date().toISOString(),
         }));
-        await supabase.from('transactions').upsert(payload);
+        await safeUpsert('transactions', payload);
       }
     } else if (localTxs.length > 0) {
       // Jika cloud masih kosong, unggah seluruh transaksi lokal
@@ -164,20 +209,23 @@ export const syncService = {
         tags: tx.tags || null,
         created_at: tx.createdAt || new Date().toISOString(),
       }));
-      await supabase.from('transactions').upsert(payload);
+      await safeUpsert('transactions', payload);
     }
   },
 
   /**
-   * Sinkronisasi Anggaran (Budgets - High Performance with bulkPut)
+   * Sinkronisasi Anggaran (Budgets - High Performance with bulkPut & safeUpsert)
    */
   async syncBudgets(userId: string) {
-    const { data: cloudBudgets, error } = await supabase
+    const { data: cloudBudgets, error: fetchErr } = await supabase
       .from('budgets')
       .select('*')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    if (fetchErr) {
+      console.error('[SyncService] Fetch cloud budgets error:', fetchErr);
+      throw fetchErr;
+    }
 
     const localBudgets = await db.budgets.toArray();
 
@@ -200,7 +248,7 @@ export const syncService = {
           amount: b.amount,
           month: b.month,
         }));
-        await supabase.from('budgets').upsert(payload);
+        await safeUpsert('budgets', payload);
       }
     } else if (localBudgets.length > 0) {
       const payload = localBudgets.map((b) => ({
@@ -210,20 +258,23 @@ export const syncService = {
         amount: b.amount,
         month: b.month,
       }));
-      await supabase.from('budgets').upsert(payload);
+      await safeUpsert('budgets', payload);
     }
   },
 
   /**
-   * Sinkronisasi Pengeluaran Berulang (Recurring Expenses - High Performance with bulkPut)
+   * Sinkronisasi Pengeluaran Berulang (Recurring Expenses - High Performance with bulkPut & safeUpsert)
    */
   async syncRecurringExpenses(userId: string) {
-    const { data: cloudRec, error } = await supabase
+    const { data: cloudRec, error: fetchErr } = await supabase
       .from('recurring_expenses')
       .select('*')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    if (fetchErr) {
+      console.error('[SyncService] Fetch cloud recurring expenses error:', fetchErr);
+      throw fetchErr;
+    }
 
     const localRec = await db.recurringExpenses.toArray();
 
@@ -254,7 +305,7 @@ export const syncService = {
           is_active: r.isActive,
           notes: r.notes || null,
         }));
-        await supabase.from('recurring_expenses').upsert(payload);
+        await safeUpsert('recurring_expenses', payload);
       }
     } else if (localRec.length > 0) {
       const payload = localRec.map((r) => ({
@@ -268,7 +319,7 @@ export const syncService = {
         is_active: r.isActive,
         notes: r.notes || null,
       }));
-      await supabase.from('recurring_expenses').upsert(payload);
+      await safeUpsert('recurring_expenses', payload);
     }
   },
 
@@ -316,7 +367,7 @@ export const syncService = {
   async pushTransaction(tx: Transaction, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      await supabase.from('transactions').upsert({
+      const payload = {
         id: tx.id,
         user_id: userId,
         amount: tx.amount,
@@ -326,9 +377,10 @@ export const syncService = {
         payment_method: tx.paymentMethod || null,
         tags: tx.tags || null,
         created_at: tx.createdAt,
-      });
+      };
+      await safeUpsert('transactions', [payload]);
     } catch (e) {
-      console.warn('pushTransaction error:', e);
+      console.warn('[SyncService] pushTransaction error:', e);
     }
   },
 
@@ -338,9 +390,10 @@ export const syncService = {
   async deleteTransaction(id: string, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId);
+      if (error) console.warn('[SyncService] deleteTransaction error:', error);
     } catch (e) {
-      console.warn('deleteTransaction error:', e);
+      console.warn('[SyncService] deleteTransaction exception:', e);
     }
   },
 
@@ -350,7 +403,7 @@ export const syncService = {
   async pushCategory(cat: Category, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      await supabase.from('categories').upsert({
+      const payload = {
         id: cat.id,
         user_id: userId,
         name: cat.name,
@@ -359,9 +412,10 @@ export const syncService = {
         budget_limit: cat.budgetLimit || 0,
         is_default: cat.isDefault || false,
         created_at: cat.createdAt,
-      });
+      };
+      await safeUpsert('categories', [payload]);
     } catch (e) {
-      console.warn('pushCategory error:', e);
+      console.warn('[SyncService] pushCategory error:', e);
     }
   },
 
@@ -371,9 +425,10 @@ export const syncService = {
   async deleteCategory(id: string, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      await supabase.from('categories').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await supabase.from('categories').delete().eq('id', id).eq('user_id', userId);
+      if (error) console.warn('[SyncService] deleteCategory error:', error);
     } catch (e) {
-      console.warn('deleteCategory error:', e);
+      console.warn('[SyncService] deleteCategory exception:', e);
     }
   },
 

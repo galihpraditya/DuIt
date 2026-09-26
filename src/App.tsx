@@ -112,7 +112,14 @@ export function App() {
   // Preset draft state (when user clicks quick preset)
   const [presetDraft, setPresetDraft] = useState<Transaction | null>(null);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('duit_active_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const t = useMemo(() => translations[language], [language]);
@@ -1092,7 +1099,10 @@ export function App() {
           handleCloseModals();
           showToast(t.authSuccessLogin, 'success');
           if (user?.id) {
-            await syncService.syncAll(user.id);
+            const syncRes = await syncService.syncAll(user.id);
+            if (!syncRes.success) {
+              showToast(syncRes.error || t.cloudSyncFailed, 'error');
+            }
           }
         }}
         t={t}

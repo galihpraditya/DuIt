@@ -1,10 +1,52 @@
 -- ==============================================================================
--- SUPABASE SCHEMA UNTUK DUIT EXPENSE TRACKER
+-- SUPABASE SCHEMA & MIGRATION UNTUK DUIT EXPENSE TRACKER
 -- Salin seluruh isi skrip ini dan jalankan di menu: SQL Editor di Dashboard Supabase
 -- ==============================================================================
 
 -- 1. EXTENSION UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ------------------------------------------------------------------------------
+-- 1.1 MIGRASI OTOMATIS: UBAH PRIMARY KEY JADI COMPOSITE (id, user_id)
+-- Menghilangkan error duplicate key / RLS violation saat multi-user / guest login
+-- ------------------------------------------------------------------------------
+DO $$
+BEGIN
+  -- Hapus foreign key legacy jika ada
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'transactions_category_id_fkey') THEN
+    ALTER TABLE public.transactions DROP CONSTRAINT transactions_category_id_fkey;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'recurring_expenses_category_id_fkey') THEN
+    ALTER TABLE public.recurring_expenses DROP CONSTRAINT recurring_expenses_category_id_fkey;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'budgets_category_id_fkey') THEN
+    ALTER TABLE public.budgets DROP CONSTRAINT budgets_category_id_fkey;
+  END IF;
+
+  -- Ubah primary key categories menjadi composite (id, user_id)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories' AND table_schema = 'public') THEN
+    ALTER TABLE public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
+    ALTER TABLE public.categories ADD PRIMARY KEY (id, user_id);
+  END IF;
+
+  -- Ubah primary key transactions menjadi composite (id, user_id)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'transactions' AND table_schema = 'public') THEN
+    ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_pkey;
+    ALTER TABLE public.transactions ADD PRIMARY KEY (id, user_id);
+  END IF;
+
+  -- Ubah primary key budgets menjadi composite (id, user_id)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'budgets' AND table_schema = 'public') THEN
+    ALTER TABLE public.budgets DROP CONSTRAINT IF EXISTS budgets_pkey;
+    ALTER TABLE public.budgets ADD PRIMARY KEY (id, user_id);
+  END IF;
+
+  -- Ubah primary key recurring_expenses menjadi composite (id, user_id)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recurring_expenses' AND table_schema = 'public') THEN
+    ALTER TABLE public.recurring_expenses DROP CONSTRAINT IF EXISTS recurring_expenses_pkey;
+    ALTER TABLE public.recurring_expenses ADD PRIMARY KEY (id, user_id);
+  END IF;
+END $$;
 
 -- 2. TABEL PROFIL PENGGUNA (PROFILES)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -18,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- 3. TABEL KATEGORI (CATEGORIES)
 CREATE TABLE IF NOT EXISTS public.categories (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   icon TEXT NOT NULL,
@@ -26,12 +68,13 @@ CREATE TABLE IF NOT EXISTS public.categories (
   budget_limit NUMERIC DEFAULT 0,
   is_default BOOLEAN DEFAULT FALSE,
   order_index INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (id, user_id)
 );
 
 -- 4. TABEL TRANSAKSI (TRANSACTIONS)
 CREATE TABLE IF NOT EXISTS public.transactions (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   amount NUMERIC NOT NULL,
   date TEXT NOT NULL,
@@ -39,22 +82,24 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   notes TEXT,
   payment_method TEXT,
   tags TEXT[],
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (id, user_id)
 );
 
 -- 5. TABEL ANGGARAN (BUDGETS)
 CREATE TABLE IF NOT EXISTS public.budgets (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   category_id TEXT,
   amount NUMERIC NOT NULL,
   month TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (id, user_id)
 );
 
 -- 6. TABEL PENGELUARAN BERULANG (RECURRING EXPENSES)
 CREATE TABLE IF NOT EXISTS public.recurring_expenses (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   amount NUMERIC NOT NULL,
@@ -63,7 +108,8 @@ CREATE TABLE IF NOT EXISTS public.recurring_expenses (
   next_due_date TEXT NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (id, user_id)
 );
 
 -- ==============================================================================
