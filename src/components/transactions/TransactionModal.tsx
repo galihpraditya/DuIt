@@ -13,7 +13,6 @@ import {
   Landmark,
   RotateCcw,
   Trash2,
-  ChevronDown,
   ArrowLeft,
 } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
@@ -51,7 +50,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [dateStr, setDateStr] = useState(toLocalInputValue(new Date()));
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('Tunai');
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [error, setError] = useState('');
@@ -91,14 +89,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         }
         setNotes(initialData.notes || '');
         setPaymentMethod(initialData.paymentMethod || 'Tunai');
-        setIsDetailOpen(false);
       } else {
         setAmountStr('');
         setSelectedCategoryId(categories[0]?.id || '');
         setDateStr(toLocalInputValue(new Date()));
         setNotes('');
         setPaymentMethod('Tunai');
-        setIsDetailOpen(false);
       }
       setError('');
       setIsConfirmDeleteOpen(false);
@@ -208,13 +204,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     y.setDate(y.getDate() - 1);
     return dateStr === toLocalInputValue(y);
   })();
-
-  const detailSummary = [
-    format(new Date(dateStr), 'dd MMM HH:mm'),
-    paymentMethod,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   return (
     <>
@@ -401,99 +390,81 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   />
                 </div>
 
-                {/* Detail Tanggal & Metode Pembayaran (Expandable/Section) */}
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-800/30">
-                  <button
-                    type="button"
-                    onClick={() => setIsDetailOpen(!isDetailOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-2">
-                      <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>{t.detailSectionLabel}</span>
-                    </span>
-                    <span className="flex items-center space-x-2 min-w-0">
-                      {!isDetailOpen && (
-                        <span className="text-xs text-slate-400 truncate">{detailSummary}</span>
-                      )}
-                      <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform ${isDetailOpen ? 'rotate-180' : ''}`}
-                      />
-                    </span>
-                  </button>
+                {/* Detail Tanggal & Metode Pembayaran (Always Visible) */}
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 bg-slate-50/60 dark:bg-slate-800/40">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-2">
+                    <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>{t.detailSectionLabel}</span>
+                  </div>
 
-                  {isDetailOpen && (
-                    <div className="px-4 pb-4 space-y-4 border-t border-slate-100 dark:border-slate-800 pt-3.5">
-                      {/* Tanggal & Waktu */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{t.dateTimeLabel}</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={dateStr}
-                          onChange={(e) => setDateStr(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
-                        />
-                        <div className="flex items-center gap-1.5 pt-1">
+                  {/* Metode Pembayaran */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>{t.paymentMethodLabel}</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {paymentMethodsList.map((method) => {
+                        const isSelected = paymentMethod === method.id;
+                        const IconComponent = method.icon;
+                        return (
                           <button
+                            key={method.id}
                             type="button"
-                            onClick={() => setQuickDate(0)}
-                            disabled={isToday}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                              isToday
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            onClick={() => setPaymentMethod(method.id)}
+                            className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1 cursor-pointer ${
+                              isSelected
+                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 dark:border-emerald-500 shadow-2xs'
+                                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                             }`}
                           >
-                            {t.todayQuickLabel}
+                            <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{method.label}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuickDate(-1)}
-                            disabled={isYesterday}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                              isYesterday
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            }`}
-                          >
-                            {t.yesterdayQuickLabel}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Metode Pembayaran */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>{t.paymentMethodLabel}</span>
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {paymentMethodsList.map((method) => {
-                            const isSelected = paymentMethod === method.id;
-                            const IconComponent = method.icon;
-                            return (
-                              <button
-                                key={method.id}
-                                type="button"
-                                onClick={() => setPaymentMethod(method.id)}
-                                className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1 cursor-pointer ${
-                                  isSelected
-                                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 dark:border-emerald-500'
-                                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                }`}
-                              >
-                                <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                                <span className="truncate">{method.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
+
+                  {/* Tanggal & Waktu */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{t.dateTimeLabel}</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={dateStr}
+                      onChange={(e) => setDateStr(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
+                    />
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setQuickDate(0)}
+                        disabled={isToday}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          isToday
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {t.todayQuickLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDate(-1)}
+                        disabled={isYesterday}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          isYesterday
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {t.yesterdayQuickLabel}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </form>
 

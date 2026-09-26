@@ -19,7 +19,8 @@ import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
 import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Tag, Layers, Eye, EyeOff } from 'lucide-react';
+import { reminderService } from './services/reminderService';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock } from 'lucide-react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -402,6 +403,16 @@ export function App() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [navigate]);
 
+  // Listen for daily reminder notification click
+  useEffect(() => {
+    const handleOpenNewTxFromReminder = () => {
+      setPresetDraft(null);
+      navigate('/transactions/new');
+    };
+    window.addEventListener('duit:open-new-transaction', handleOpenNewTxFromReminder);
+    return () => window.removeEventListener('duit:open-new-transaction', handleOpenNewTxFromReminder);
+  }, [navigate]);
+
   // Sync Language with LocalStorage
   const handleLanguageChange = (newLang: Language) => {
     setLanguage(newLang);
@@ -461,6 +472,17 @@ export function App() {
   );
   const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
 
+  // Check Daily Expense Reminder periodically across all-time transactions
+  useEffect(() => {
+    reminderService.checkAndTriggerDailyReminder(allTransactions, t);
+
+    const interval = setInterval(() => {
+      reminderService.checkAndTriggerDailyReminder(allTransactions, t);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [allTransactions, t]);
+
 
   // Query editing transaction langsung by ID dari IndexedDB
   const editingTransactionRaw = useLiveQuery(
@@ -476,8 +498,26 @@ export function App() {
   }, [presetDraft, editTransactionId, editingTransactionRaw, transactions]);
 
   // Current Month / All-Time Data Calculation
-  const { currentMonthTotal, currentMonthDailyAverage, currentMonthTxCount, currentDate } = useMemo(() => {
+  const {
+    currentMonthTotal,
+    currentMonthDailyAverage,
+    todaySpent,
+    highestExpenseInMonth,
+    isCurrentMonth,
+    currentDate,
+  } = useMemo(() => {
     let date = new Date();
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const todayTotal = transactions
+      .filter((tx) => {
+        try {
+          return tx.date.startsWith(todayStr);
+        } catch {
+          return false;
+        }
+      })
+      .reduce((acc, tx) => acc + tx.amount, 0);
 
     if (!isAllTime) {
       try {
@@ -504,20 +544,24 @@ export function App() {
 
       const total = monthTxs.reduce((acc, tx) => acc + tx.amount, 0);
 
-      const now = new Date();
+      const isViewingCurrentMonth =
+        date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
       let days = 1;
-      if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
+      if (isViewingCurrentMonth) {
         days = Math.max(1, now.getDate());
       } else {
         days = Math.max(1, end.getDate());
       }
       const dailyAverage = Math.round(total / days);
+      const highest = monthTxs.reduce((max, tx) => Math.max(max, tx.amount), 0);
 
-      return { 
-        currentMonthTotal: total, 
-        currentMonthDailyAverage: dailyAverage, 
-        currentMonthTxCount: monthTxs.length,
-        currentDate: date 
+      return {
+        currentMonthTotal: total,
+        currentMonthDailyAverage: dailyAverage,
+        todaySpent: todayTotal,
+        highestExpenseInMonth: highest,
+        isCurrentMonth: isViewingCurrentMonth,
+        currentDate: date,
       };
     } else {
       // ALL-TIME CALCULATION
@@ -530,11 +574,14 @@ export function App() {
       });
       const daysCount = Math.max(1, uniqueDays.size);
       const dailyAverage = Math.round(total / daysCount);
+      const highest = transactions.reduce((max, tx) => Math.max(max, tx.amount), 0);
 
       return {
         currentMonthTotal: total,
         currentMonthDailyAverage: dailyAverage,
-        currentMonthTxCount: transactions.length,
+        todaySpent: todayTotal,
+        highestExpenseInMonth: highest,
+        isCurrentMonth: true,
         currentDate: new Date(),
       };
     }
@@ -903,12 +950,18 @@ export function App() {
 
                   <div>
                     <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                      <Tag className="w-3.5 h-3.5 text-sky-500" />
-                      <span className="truncate">{t.kpiFrequency}</span>
+                      <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="truncate">
+                        {isCurrentMonth ? (t.kpiToday || 'Hari Ini') : t.kpiHighestExpense}
+                      </span>
                     </div>
-                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
-                      {currentMonthTxCount}{' '}
-                      <span className="text-xs font-medium text-slate-400">{t.kpiTimes}</span>
+                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                      {formatIDR(
+                        isCurrentMonth ? todaySpent : highestExpenseInMonth,
+                        false,
+                        language,
+                        hideNominals
+                      )}
                     </div>
                   </div>
                 </div>

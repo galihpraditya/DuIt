@@ -159,6 +159,8 @@ export interface Translations {
   kpiFrequency: string;
   kpiTimes: string;
   kpiFreqDesc: string;
+  kpiToday: string;
+  kpiTodayDesc: string;
   trendChartTitle: string;
   trendChartDesc: string;
   chartBar: string;
@@ -218,6 +220,18 @@ export interface Translations {
   resetConfirmMsg: string;
   resetConfirmBtn: string;
   versionLabel: string;
+  // Daily Reminder Settings
+  reminderSection: string;
+  reminderDesc: string;
+  reminderEnable: string;
+  reminderTime: string;
+  reminderTestBtn: string;
+  reminderTestSuccess: string;
+  reminderPermissionDenied: string;
+  reminderActiveBadge: string;
+  reminderInactiveBadge: string;
+  reminderNotificationTitle: string;
+  reminderNotificationBody: string;
   // Auth
   authSignIn: string;
   authSignUp: string;
@@ -490,6 +504,8 @@ export const translations: Record<Language, Translations> = {
     kpiFrequency: 'Frekuensi Belanja',
     kpiTimes: 'kali',
     kpiFreqDesc: 'Total catatan transaksi',
+    kpiToday: 'Hari Ini',
+    kpiTodayDesc: 'Pengeluaran yang tercatat pada hari ini',
     trendChartTitle: 'Tren Pengeluaran',
     trendChartDesc: 'Pengeluaran harian dan bulanan',
     chartBar: 'Batang',
@@ -549,6 +565,19 @@ export const translations: Record<Language, Translations> = {
     resetConfirmMsg: 'Peringatan: Tindakan ini akan menghapus permanen semua catatan pengeluaran dan kategori Anda. Lanjutkan?',
     resetConfirmBtn: 'Reset Semua Data',
     versionLabel: 'DuIt Expense Tracker v1.2.0',
+
+    // Daily Reminder Settings
+    reminderSection: 'Pengingat Pengeluaran Harian',
+    reminderDesc: 'Dapatkan notifikasi pengingat untuk mencatat pengeluaran harianmu',
+    reminderEnable: 'Aktifkan Pengingat Harian',
+    reminderTime: 'Waktu Pengingat',
+    reminderTestBtn: 'Uji Coba Notifikasi',
+    reminderTestSuccess: 'Notifikasi pengujian berhasil dikirim!',
+    reminderPermissionDenied: 'Izin notifikasi diblokir browser. Mohon izinkan notifikasi pada pengaturan browser Anda.',
+    reminderActiveBadge: 'Pengingat Aktif',
+    reminderInactiveBadge: 'Nonaktif',
+    reminderNotificationTitle: 'DuIt - Pengingat Harian',
+    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol! 💰',
 
     // Auth
     authSignIn: 'Masuk Akun',
@@ -820,6 +849,8 @@ export const translations: Record<Language, Translations> = {
     kpiFrequency: 'Spending Frequency',
     kpiTimes: 'times',
     kpiFreqDesc: 'Total transaction count',
+    kpiToday: 'Today',
+    kpiTodayDesc: 'Expenses recorded today',
     trendChartTitle: 'Spending Trend',
     trendChartDesc: 'Daily and monthly spending',
     chartBar: 'Bar',
@@ -878,7 +909,20 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset All Application Data',
     resetConfirmMsg: 'Warning: This will permanently wipe all your expense records and categories. Proceed?',
     resetConfirmBtn: 'Reset All Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0 â€¢ Offline-First PWA',
+    versionLabel: 'DuIt Expense Tracker v1.2.0 • Offline-First PWA',
+
+    // Daily Reminder Settings
+    reminderSection: 'Daily Expense Reminder',
+    reminderDesc: 'Get reminded to record your daily expenses',
+    reminderEnable: 'Enable Daily Reminder',
+    reminderTime: 'Reminder Time',
+    reminderTestBtn: 'Test Notification',
+    reminderTestSuccess: 'Test notification sent successfully!',
+    reminderPermissionDenied: 'Notification permission was denied. Please allow notifications in browser settings.',
+    reminderActiveBadge: 'Reminder Active',
+    reminderInactiveBadge: 'Disabled',
+    reminderNotificationTitle: 'DuIt - Daily Reminder',
+    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget! 💰",
 
     // Auth
     authSignIn: 'Sign In',

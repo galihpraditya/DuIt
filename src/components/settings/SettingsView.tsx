@@ -15,10 +15,16 @@ import {
   Keyboard,
   ShieldAlert,
   Sliders,
+  Bell,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Send,
 } from 'lucide-react';
 import type { Language, Translations } from '../../constants/translations';
 import { ConfirmModal } from '../common/ConfirmModal';
 import type { UserProfile } from '../../services/authService';
+import { reminderService, type ReminderSettings } from '../../services/reminderService';
 
 export interface SettingsViewProps {
   language: Language;
@@ -56,6 +62,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
+
+  // Daily Reminder state
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() =>
+    reminderService.getSettings()
+  );
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>(() =>
+    reminderService.getPermission()
+  );
+  const [isTestingReminder, setIsTestingReminder] = useState(false);
+  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
+
+  const handleToggleReminder = async () => {
+    const nextEnabled = !reminderSettings.enabled;
+
+    if (nextEnabled) {
+      const perm = await reminderService.requestPermission();
+      setPermissionStatus(perm);
+      if (perm !== 'granted') {
+        setReminderFeedback(t.reminderPermissionDenied);
+        setTimeout(() => setReminderFeedback(null), 5000);
+        return;
+      }
+    }
+
+    const updated = { ...reminderSettings, enabled: nextEnabled };
+    reminderService.saveSettings(updated);
+    setReminderSettings(updated);
+  };
+
+  const handleReminderTimeChange = (newTime: string) => {
+    const updated = { ...reminderSettings, time: newTime };
+    reminderService.saveSettings(updated);
+    setReminderSettings(updated);
+  };
+
+  const handleTestReminder = async () => {
+    setIsTestingReminder(true);
+    setReminderFeedback(null);
+    try {
+      const success = await reminderService.sendTestNotification(t);
+      setPermissionStatus(reminderService.getPermission());
+      if (success) {
+        setReminderFeedback(t.reminderTestSuccess);
+      } else {
+        setReminderFeedback(t.reminderPermissionDenied);
+      }
+    } catch {
+      setReminderFeedback(t.reminderPermissionDenied);
+    } finally {
+      setIsTestingReminder(false);
+      setTimeout(() => setReminderFeedback(null), 4000);
+    }
+  };
 
   return (
     <div className="space-y-5 max-w-4xl w-full mx-auto pb-14 animate-in fade-in duration-200">
@@ -282,6 +341,159 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Card 3: Notifikasi & Pengingat Harian (Daily Reminder) */}
+      <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t.reminderSection}
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t.reminderDesc}
+              </p>
+            </div>
+          </div>
+
+          <span
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+              reminderSettings.enabled && permissionStatus === 'granted'
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            {reminderSettings.enabled && permissionStatus === 'granted'
+              ? t.reminderActiveBadge
+              : t.reminderInactiveBadge}
+          </span>
+        </div>
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          {/* Row 1: Toggle Aktifkan */}
+          <div className="py-3.5 flex items-center justify-between gap-3 first:pt-1">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {t.reminderEnable}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {reminderSettings.enabled
+                    ? `${language === 'id' ? 'Diingatkan setiap pukul' : 'Reminds daily at'} ${reminderSettings.time}`
+                    : language === 'id'
+                    ? 'Pengingat saat ini dinonaktifkan'
+                    : 'Reminders are currently off'}
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              onClick={handleToggleReminder}
+              role="switch"
+              aria-checked={reminderSettings.enabled}
+              className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer focus:outline-none p-0.5 shrink-0 ${
+                reminderSettings.enabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <div
+                className={`w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform ${
+                  reminderSettings.enabled ? 'translate-x-5.5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Row 2: Waktu Pengingat & Uji Coba (hanya tampil jika aktif) */}
+          {reminderSettings.enabled && (
+            <div className="py-3.5 space-y-3 last:pb-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {t.reminderTime}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {language === 'id' ? 'Pilih waktu pengingat harian' : 'Select daily reminder time'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {/* Preset quick times */}
+                  {['19:00', '20:00', '21:00'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleReminderTimeChange(preset)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        reminderSettings.time === preset
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+
+                  {/* Time Input */}
+                  <input
+                    type="time"
+                    value={reminderSettings.time}
+                    onChange={(e) => handleReminderTimeChange(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark]"
+                  />
+                </div>
+              </div>
+
+              {/* Action: Test Notification Button */}
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800/60">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {language === 'id'
+                    ? 'Uji notifikasi untuk memastikan browser mengizinkan pemberitahuan pop-up'
+                    : 'Test notification to ensure browser displays reminders properly'}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleTestReminder}
+                  disabled={isTestingReminder}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition-all shrink-0 cursor-pointer active:scale-95 disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isTestingReminder ? 'Mengirim...' : t.reminderTestBtn}</span>
+                </button>
+              </div>
+
+              {/* Warning jika izin diblokir */}
+              {permissionStatus === 'denied' && (
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/40 flex items-start space-x-2.5 text-amber-800 dark:text-amber-200 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <p>{t.reminderPermissionDenied}</p>
+                </div>
+              )}
+
+              {/* Feedback toast banner */}
+              {reminderFeedback && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/40 flex items-center space-x-2 text-emerald-800 dark:text-emerald-200 text-xs">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <p>{reminderFeedback}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
