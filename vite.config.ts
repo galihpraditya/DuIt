@@ -2,8 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/groq-api': {
+        target: 'https://api.groq.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/groq-api/, ''),
+        secure: false,
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

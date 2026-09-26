@@ -20,11 +20,17 @@ import {
   AlertCircle,
   CheckCircle2,
   Send,
+  Sparkles,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Key,
 } from 'lucide-react';
 import type { Language, Translations } from '../../constants/translations';
 import { ConfirmModal } from '../common/ConfirmModal';
 import type { UserProfile } from '../../services/authService';
 import { reminderService, type ReminderSettings } from '../../services/reminderService';
+import { aiService } from '../../services/aiService';
 
 export interface SettingsViewProps {
   language: Language;
@@ -114,6 +120,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setIsTestingReminder(false);
       setTimeout(() => setReminderFeedback(null), 4000);
     }
+  };
+
+  // Groq AI state
+  const [groqApiKey, setGroqApiKey] = useState(() => aiService.getUserApiKey());
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingAi, setIsTestingAi] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  const handleSaveApiKey = async () => {
+    aiService.saveApiKey(groqApiKey);
+    if (!groqApiKey.trim()) {
+      if (aiService.hasDefaultEnvApiKey()) {
+        setIsTestingAi(true);
+        const result = await aiService.testApiKey();
+        setIsTestingAi(false);
+        setAiFeedback({
+          message: `Kunci kustom dihapus. Menggunakan default .env: ${result.message}`,
+          isError: !result.success,
+        });
+      } else {
+        setAiFeedback({ message: 'API Key berhasil dihapus', isError: false });
+      }
+      setTimeout(() => setAiFeedback(null), 4000);
+      return;
+    }
+    setIsTestingAi(true);
+    const result = await aiService.testApiKey(groqApiKey);
+    setIsTestingAi(false);
+    setAiFeedback({ message: result.message, isError: !result.success });
+    setTimeout(() => setAiFeedback(null), 6000);
+  };
+
+  const handleRemoveApiKey = () => {
+    aiService.removeApiKey();
+    setGroqApiKey('');
+    if (aiService.hasDefaultEnvApiKey()) {
+      setAiFeedback({
+        message: 'Kunci kustom dihapus. Beralih ke default API Key dari .env',
+        isError: false,
+      });
+    } else {
+      setAiFeedback({ message: 'API Key berhasil dihapus', isError: false });
+    }
+    setTimeout(() => setAiFeedback(null), 3000);
   };
 
   return (
@@ -492,6 +542,131 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <p>{reminderFeedback}</p>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Card 4: Integrasi Groq AI */}
+      <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t.aiSection}
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t.aiDesc}
+              </p>
+            </div>
+          </div>
+
+          <span
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+              groqApiKey.trim() || aiService.hasDefaultEnvApiKey()
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            {groqApiKey.trim()
+              ? t.aiStatusActive
+              : aiService.hasDefaultEnvApiKey()
+              ? 'Default .env Aktif'
+              : t.aiStatusInactive}
+          </span>
+        </div>
+
+        <div className="space-y-3.5 pt-1">
+          {/* Input API Key */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+              <Key className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>{t.aiApiKeyLabel}</span>
+            </label>
+
+            <div className="relative flex items-center">
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                placeholder={
+                  aiService.hasDefaultEnvApiKey()
+                    ? 'Default .env aktif — isi untuk menggunakan kunci pribadi'
+                    : t.aiApiKeyPlaceholder
+                }
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm font-mono focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApiKey(!showApiKey)}
+                className="absolute right-2.5 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                title={showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+              >
+                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {!groqApiKey.trim() && aiService.hasDefaultEnvApiKey() && (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center space-x-1 pt-0.5">
+                <span>💡</span>
+                <span>Menggunakan API Key default dari sistem (.env). Isi kolom di atas jika ingin menggunakan kunci pribadi Anda.</span>
+              </p>
+            )}
+          </div>
+
+          {/* Action Buttons for Mobile First */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
+            <a
+              href="https://console.groq.com/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline py-1"
+            >
+              <span>{t.aiGetKeyHelp}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            <div className="flex items-center space-x-2 self-end sm:self-auto w-full sm:w-auto">
+              {groqApiKey.trim() && (
+                <button
+                  type="button"
+                  onClick={handleRemoveApiKey}
+                  className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                >
+                  {t.aiRemoveKeyBtn}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveApiKey}
+                disabled={isTestingAi}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isTestingAi ? 'Menguji...' : t.aiSaveKeyBtn}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Feedback banner */}
+          {aiFeedback && (
+            <div
+              className={`p-3 rounded-2xl border text-xs flex items-center space-x-2 ${
+                aiFeedback.isError
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200'
+              }`}
+            >
+              {aiFeedback.isError ? (
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+              )}
+              <p>{aiFeedback.message}</p>
             </div>
           )}
         </div>

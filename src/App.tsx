@@ -637,6 +637,30 @@ export function App() {
     }
   };
 
+  const handleSaveBatchTransactions = async (batch: Omit<Transaction, 'id' | 'createdAt'>[]) => {
+    if (!batch || batch.length === 0) return;
+    const newTransactions: Transaction[] = batch.map((item) => ({
+      id: generateId('tx'),
+      ...item,
+      createdAt: new Date().toISOString(),
+    }));
+
+    await db.transactions.bulkAdd(newTransactions);
+    if (currentUser?.id) {
+      for (const tx of newTransactions) {
+        syncService.pushTransaction(tx, currentUser.id);
+      }
+    }
+
+    const totalAmount = newTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    showToast(
+      language === 'id'
+        ? `Berhasil mencatat ${newTransactions.length} transaksi (${formatIDR(totalAmount, false, language)})!`
+        : `Recorded ${newTransactions.length} transactions (${formatIDR(totalAmount, false, language)})!`,
+      'success'
+    );
+  };
+
   const handleDeleteTransaction = async (id: string) => {
     await db.transactions.delete(id);
     if (currentUser?.id) {
@@ -1115,6 +1139,7 @@ export function App() {
         isOpen={isTransactionModalOpen}
         onClose={handleCloseModals}
         onSave={handleSaveTransaction}
+        onSaveBatch={handleSaveBatchTransactions}
         onDelete={handleDeleteTransaction}
         categories={sortedCategories}
         initialData={editingTransaction}

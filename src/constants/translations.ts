@@ -232,6 +232,30 @@ export interface Translations {
   reminderInactiveBadge: string;
   reminderNotificationTitle: string;
   reminderNotificationBody: string;
+  // Groq AI Settings & Smart Input
+  aiSection: string;
+  aiDesc: string;
+  aiApiKeyLabel: string;
+  aiApiKeyPlaceholder: string;
+  aiSaveKeyBtn: string;
+  aiRemoveKeyBtn: string;
+  aiStatusActive: string;
+  aiStatusInactive: string;
+  aiTestKeyBtn: string;
+  aiTestSuccess: string;
+  aiTestFailed: string;
+  aiGetKeyHelp: string;
+  aiInputPlaceholder: string;
+  aiInputButton: string;
+  aiListening: string;
+  aiProcessing: string;
+  aiSpeechError: string;
+  aiParseError: string;
+  aiParseSuccess: string;
+  batchReviewTitle: string;
+  batchReviewDesc: string;
+  saveAllBatchBtn: string;
+  cancelBatchBtn: string;
   // Auth
   authSignIn: string;
   authSignUp: string;
@@ -579,6 +603,31 @@ export const translations: Record<Language, Translations> = {
     reminderNotificationTitle: 'DuIt - Pengingat Harian',
     reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol! 💰',
 
+    // Groq AI Settings & Smart Input
+    aiSection: 'Integrasi Groq AI (GPT-OSS 120B)',
+    aiDesc: 'Ekstraksi transaksi tunggal atau banyak sekaligus secara instan lewat teks atau suara.',
+    aiApiKeyLabel: 'Groq API Key',
+    aiApiKeyPlaceholder: 'Tempel Groq API Key di sini (gsk_...)',
+    aiSaveKeyBtn: 'Simpan Kunci',
+    aiRemoveKeyBtn: 'Hapus',
+    aiStatusActive: 'AI Aktif',
+    aiStatusInactive: 'Belum Dikonfigurasi',
+    aiTestKeyBtn: 'Uji Koneksi AI',
+    aiTestSuccess: 'Koneksi Groq AI berhasil! Model GPT-OSS 120B siap digunakan.',
+    aiTestFailed: 'Gagal terhubung ke Groq AI. Pastikan API Key valid.',
+    aiGetKeyHelp: 'Dapatkan Groq API Key Gratis di console.groq.com',
+    aiInputPlaceholder: 'Cth: bakso 10k, bensin 30k qris, mie ayam 7k...',
+    aiInputButton: 'Ekstrak',
+    aiListening: 'Mendengarkan suara... Silakan bicara',
+    aiProcessing: 'AI sedang mengekstrak...',
+    aiSpeechError: 'Gagal mengakses mikrofon atau pengenalan suara tidak didukung browser.',
+    aiParseError: 'Tidak dapat mengekstrak transaksi dari kalimat ini. Coba kalimat yang lebih jelas.',
+    aiParseSuccess: 'Transaksi berhasil diekstrak oleh AI!',
+    batchReviewTitle: 'Review Multi-Transaksi',
+    batchReviewDesc: 'AI memisahkan pengeluaran secara otomatis. Periksa dan simpan sekaligus.',
+    saveAllBatchBtn: 'Simpan Semua Transaksi',
+    cancelBatchBtn: 'Batal / Input Manual',
+
     // Auth
     authSignIn: 'Masuk Akun',
     authSignUp: 'Daftar',
@@ -923,6 +972,31 @@ export const translations: Record<Language, Translations> = {
     reminderInactiveBadge: 'Disabled',
     reminderNotificationTitle: 'DuIt - Daily Reminder',
     reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget! 💰",
+
+    // Groq AI Settings & Smart Input
+    aiSection: 'Groq AI Integration (GPT-OSS 120B)',
+    aiDesc: 'Instantly extract single or multiple transactions at once via text or voice.',
+    aiApiKeyLabel: 'Groq API Key',
+    aiApiKeyPlaceholder: 'Paste Groq API Key here (gsk_...)',
+    aiSaveKeyBtn: 'Save Key',
+    aiRemoveKeyBtn: 'Remove',
+    aiStatusActive: 'AI Active',
+    aiStatusInactive: 'Not Configured',
+    aiTestKeyBtn: 'Test AI Connection',
+    aiTestSuccess: 'Groq AI connection successful! GPT-OSS 120B is ready.',
+    aiTestFailed: 'Failed to connect to Groq AI. Please check your API Key.',
+    aiGetKeyHelp: 'Get a Free Groq API Key at console.groq.com',
+    aiInputPlaceholder: 'E.g. burger 25k, gas 30k qris, coffee 10k...',
+    aiInputButton: 'Extract',
+    aiListening: 'Listening... Speak now',
+    aiProcessing: 'AI is extracting...',
+    aiSpeechError: 'Microphone access failed or speech recognition is not supported.',
+    aiParseError: 'Could not extract transaction from this sentence. Try a clearer phrase.',
+    aiParseSuccess: 'Transaction successfully extracted by AI!',
+    batchReviewTitle: 'Review Multi-Transactions',
+    batchReviewDesc: 'AI detected multiple expenses. Review and save all at once.',
+    saveAllBatchBtn: 'Save All Transactions',
+    cancelBatchBtn: 'Cancel / Manual Form',
 
     // Auth
     authSignIn: 'Sign In',
