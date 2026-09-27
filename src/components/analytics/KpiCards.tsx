@@ -59,7 +59,6 @@ export const KpiCards: React.FC<KpiCardsProps> = React.memo(({
         <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-2">
           {formatIDR(averagePerDay, false, lang)}
         </div>
-        <p className="text-[11px] text-slate-400 mt-1">{t.kpiDailyAvgDesc}</p>
       </div>
 
       {/* Card 3: Highest Single Expense */}
@@ -73,7 +72,6 @@ export const KpiCards: React.FC<KpiCardsProps> = React.memo(({
         <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-2">
           {formatIDR(highestExpense, false, lang)}
         </div>
-        <p className="text-[11px] text-slate-400 mt-1">{t.kpiHighestExpenseDesc}</p>
       </div>
 
       {/* Card 4: Transaction Count */}
@@ -87,7 +85,6 @@ export const KpiCards: React.FC<KpiCardsProps> = React.memo(({
         <div className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-2">
           {txCount} <span className="text-xs font-normal text-slate-400">{t.kpiTimes}</span>
         </div>
-        <p className="text-[11px] text-slate-400 mt-1">{t.kpiFreqDesc}</p>
       </div>
     </div>
   );

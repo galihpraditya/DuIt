@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Mic, MicOff, Loader2, Check, ArrowRight } from 'lucide-react';
+import { Zap, Mic, MicOff, Loader2, Check, ArrowRight } from 'lucide-react';
 import { aiService, type ParsedTransactionResult } from '../../services/aiService';
 import type { Category } from '../../types';
 import type { Translations } from '../../constants/translations';
@@ -103,7 +103,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
         onParsed(results);
         setSuccessBadge(
           results.length > 1
-            ? `${results.length} transaksi terdeteksi!`
+            ? `${results.length} transaksi terdeteksi`
             : t.aiParseSuccess
         );
         setInputText('');
@@ -121,12 +121,12 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
   };
 
   return (
-    <div className="rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-purple-500/10 border border-emerald-500/20 dark:border-emerald-500/30 space-y-2.5 transition-all">
+    <div className="rounded-2xl p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 transition-all">
       {/* Top Bar Label */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-          <Sparkles className="w-3.5 h-3.5 animate-pulse text-emerald-600 dark:text-emerald-400" />
-          <span>Smart Input AI (Multi-Transaksi)</span>
+        <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+          <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span>{t.aiSection}</span>
         </div>
 
         {successBadge && (
@@ -174,7 +174,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
                   processNaturalText(inputText);
                 }
               }}
-              placeholder="Cth: bakso 10k, bensin 30k qris, mie ayam 7k..."
+              placeholder={t.aiInputPlaceholder || 'Contoh: Kopi 25rb tunai, Bensin 50rb transfer, Makan siang 35rb qris...'}
               disabled={isProcessing}
               className="w-full h-11 pl-3.5 pr-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all disabled:opacity-60"
             />

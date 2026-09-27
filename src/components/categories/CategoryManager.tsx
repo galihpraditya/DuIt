@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Edit2,
@@ -8,7 +9,7 @@ import {
   Grid,
   Tag,
   DollarSign,
-  Sparkles,
+  Palette,
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
@@ -192,18 +193,13 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <Grid className="w-5 h-5" />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center space-x-2">
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-                {t.categoryHeaderTitle}
-              </h2>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-                {categories.length}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block truncate">
-              {t.categoryHeaderDesc}
-            </p>
+          <div className="min-w-0 flex-1 flex items-center space-x-2">
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
+              {t.categoryHeaderTitle}
+            </h2>
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+              {categories.length}
+            </span>
           </div>
         </div>
 
@@ -250,7 +246,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
       {activeSortMode === 'manual' && (
         <div className="px-3.5 sm:px-4 py-2 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 animate-in fade-in duration-200">
           <span className="flex items-center space-x-2 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
             <span>
               {lang === 'en'
                 ? 'Custom order mode active. Use the arrows (↑ ↓) on each card to reorder.'
@@ -383,7 +379,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
       </div>
 
       {/* Add / Edit Category Modal (Mobile Sheet + Desktop Dialog) */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 z-50 flex sm:items-center items-end justify-center sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="glass-modal rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
@@ -448,7 +444,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 {/* Color Picker with Touch-Friendly Swatches */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                    <Palette className="w-3.5 h-3.5 text-emerald-500" />
                     <span>{t.pickColorLabel}</span>
                   </label>
                   <div className="flex flex-wrap gap-2.5 items-center">
@@ -533,7 +529,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modern Confirmation Modal for Category Deletion */}

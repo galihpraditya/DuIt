@@ -294,32 +294,37 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     return dateStr === toLocalInputValue(y);
   })();
 
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 640;
+
   return (
     <>
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end">
-            {/* Backdrop: dimming the dashboard with subtle blur, click closes panel */}
+          <div className="fixed inset-0 h-[100dvh] z-50 flex justify-end overflow-hidden">
+            {/* Backdrop: dimming the dashboard with lightweight GPU-friendly overlay */}
             <motion.div
-              className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm sm:backdrop-blur-[2px]"
+              className="fixed inset-0 bg-slate-950/45 dark:bg-slate-950/70 sm:backdrop-blur-xs"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.18 }}
               onClick={onClose}
               aria-hidden="true"
             />
 
             {/* Slide-over Right Sidebar Panel (100% full-screen on mobile, max-w-lg right drawer on desktop) */}
             <motion.div
-              className="relative z-10 w-full sm:max-w-lg lg:max-w-xl h-full flex flex-col bg-white dark:bg-slate-900 sm:border-l border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-lg lg:max-w-xl h-[100dvh] sm:h-full max-h-[100dvh] flex flex-col bg-white dark:bg-slate-900 sm:border-l border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transform-gpu"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             >
               {/* Header */}
-              <div className="pt-safe px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md">
+              <div
+                style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.875rem)' }}
+                className="px-5 pb-3.5 sm:pb-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
+              >
                 <div className="flex items-center space-x-2.5">
                   {/* Mobile Back Button */}
                   <button
@@ -332,22 +337,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                   </button>
 
-                  <div>
-                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
-                      {batchItems && batchItems.length > 0
-                        ? `${t.batchReviewTitle} (${batchItems.length})`
-                        : initialData
-                        ? t.modalEditTitle
-                        : t.modalNewTitle}
-                    </h2>
-                    <p className="hidden sm:block text-xs text-slate-400 dark:text-slate-500 font-medium">
-                      {batchItems && batchItems.length > 0
-                        ? t.batchReviewDesc
-                        : initialData
-                        ? (t.modalEditDesc || 'Perbarui rincian pengeluaran')
-                        : (t.modalNewDesc || 'Catat pengeluaran baru dengan cepat')}
-                    </p>
-                  </div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    {batchItems && batchItems.length > 0
+                      ? `${t.batchReviewTitle} (${batchItems.length})`
+                      : initialData
+                      ? t.modalEditTitle
+                      : t.modalNewTitle}
+                  </h2>
                 </div>
 
                 <div className="flex items-center space-x-1">
@@ -365,7 +361,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
 
               {/* Scrollable Form Body */}
-              <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-5 overscroll-contain">
+              <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 pb-10 space-y-5 overscroll-contain">
                 {error && (
                   <div className="p-3 text-xs bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 rounded-xl">
                     {error}
@@ -526,7 +522,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           value={amountStr}
                           onChange={handleAmountChange}
                           placeholder="0"
-                          autoFocus
+                          autoFocus={isDesktop}
                           className="w-full bg-transparent text-4xl sm:text-5xl font-black text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-slate-700 focus:outline-none tracking-tight font-sans"
                         />
                       </div>
@@ -695,8 +691,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 )}
               </div>
 
-              {/* Sticky Footer */}
-              <div className="px-5 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 shrink-0 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-md">
+              {/* Sticky Footer with safe-area clearance */}
+              <div
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+                className="px-5 sm:px-6 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
+              >
                 {batchItems && batchItems.length > 0 ? (
                   <div className="space-y-2">
                     <button

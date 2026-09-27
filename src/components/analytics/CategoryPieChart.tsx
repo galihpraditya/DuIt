@@ -49,7 +49,6 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = React.memo(({
           <PieIcon className="w-4 h-4 text-teal-500" />
           <span>{t.categoryDistTitle}</span>
         </h3>
-        <p className="text-xs text-slate-400 mt-0.5">{t.categoryDistDesc}</p>
       </div>
 
       <div className="h-56 relative my-2 min-h-[224px] w-full">

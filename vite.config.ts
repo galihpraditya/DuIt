@@ -40,4 +40,29 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router-dom/')
+          ) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/dexie')) {
+            return 'vendor-db';
+          }
+          if (id.includes('node_modules/@supabase')) {
+            return 'vendor-cloud';
+          }
+          if (id.includes('node_modules/date-fns')) {
+            return 'vendor-date';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 });

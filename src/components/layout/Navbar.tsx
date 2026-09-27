@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { Wallet, Settings, Plus, RefreshCw } from 'lucide-react';
 import type { Translations } from '../../constants/translations';
 
@@ -12,7 +12,7 @@ interface NavbarProps {
   t: Translations;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
+export const Navbar: React.FC<NavbarProps> = memo(({
   onOpenSettings,
   onOpenNewTransaction,
   activeTab,
@@ -21,6 +21,39 @@ export const Navbar: React.FC<NavbarProps> = ({
   isRefreshing = false,
   t,
 }) => {
+  const [isVisible, setIsVisible] = useState<boolean>(true);
+  const lastScrollYRef = useRef<number>(0);
+
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const diff = currentScrollY - lastScrollYRef.current;
+
+          // Always visible at or near the top
+          if (currentScrollY < 30) {
+            setIsVisible(true);
+          } else if (diff > 12 && currentScrollY > 70) {
+            // Scrolling down -> hide header on mobile
+            setIsVisible(false);
+          } else if (diff < -10) {
+            // Scrolling up -> show header
+            setIsVisible(true);
+          }
+
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const navItems = [
     { id: 'transactions', label: t.transactions },
     { id: 'analytics', label: t.analytics },
@@ -29,7 +62,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-30 pt-safe">
+    <header
+      className={`sticky top-0 z-30 pt-safe transition-all duration-300 ease-in-out ${
+        isVisible
+          ? 'translate-y-0 opacity-100'
+          : '-translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Floating Bar — efek kaca lewat border & shadow */}
         <div className="relative flex items-center justify-between h-14 sm:h-16 mt-3 px-3 sm:px-4 rounded-2xl glass-panel">
@@ -119,4 +158,4 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
     </header>
   );
-};
+});

@@ -4,7 +4,6 @@ import type { CategoryDataEntry } from './analyticsCalculator';
 import type { Category } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import type { Language, Translations } from '../../constants/translations';
-import { AlertCircle } from 'lucide-react';
 
 interface CategoryRankingTableProps {
   categoryData: CategoryDataEntry[];
@@ -58,8 +57,9 @@ export const CategoryRankingTable: React.FC<CategoryRankingTableProps> = React.m
                 key={cat.id}
                 className="p-2.5 -mx-2.5 rounded-2xl hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all space-y-2 group"
               >
+                {/* Row 1: Rank, Icon, Name (Left) & Total Amount (Right) */}
                 <div className="flex items-center justify-between text-xs gap-2">
-                  <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="flex items-center space-x-2.5 min-w-0 flex-1">
                     <span className="w-5 text-slate-400 font-bold text-[11px] shrink-0 font-mono">
                       #{idx + 1}
                     </span>
@@ -69,50 +69,52 @@ export const CategoryRankingTable: React.FC<CategoryRankingTableProps> = React.m
                     >
                       <DynamicIcon name={cat.icon} className="w-3.5 h-3.5" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {cat.name}
-                        </span>
-                        {isOverLimit && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            <span>{t.categoryOverbudgetBadge}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <span>
-                          {cat.count} {t.kpiTimes}
-                        </span>
-                        {limit !== undefined && (
-                          <>
-                            <span>•</span>
-                            <span className={isOverLimit ? 'text-rose-500 font-semibold' : 'text-slate-500 dark:text-slate-400'}>
-                              {limitUsagePct}% {t.categoryBudgetLimitUsed} ({formatIDR(limit, true, lang)})
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 truncate text-xs sm:text-sm">
+                      {cat.name}
+                    </span>
                   </div>
 
-                  <div className="flex flex-col items-end shrink-0">
-                    <span className="font-bold text-slate-800 dark:text-slate-100">
-                      {formatIDR(cat.total, false, lang)}
+                  <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap text-xs sm:text-sm shrink-0">
+                    {formatIDR(cat.total, false, lang)}
+                  </span>
+                </div>
+
+                {/* Row 2: Metadata (Count + Budget Limit Status) & Share % */}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pl-7 sm:pl-7.5 gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 truncate text-[10px] sm:text-[11px]">
+                    <span className="shrink-0">
+                      {cat.count} {t.kpiTimes}
                     </span>
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      {percentage.toFixed(1)}%
-                    </span>
+                    {limit !== undefined && (
+                      <>
+                        <span className="shrink-0">•</span>
+                        <span
+                          className={`truncate ${
+                            isOverLimit
+                              ? 'text-rose-500 font-semibold'
+                              : 'text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {isOverLimit ? (lang === 'en' ? 'Over limit' : 'Melebihi limit') : 'Limit'}{' '}
+                          <span className="whitespace-nowrap font-medium">
+                            {formatIDR(limit, true, lang)}
+                          </span>{' '}
+                          ({limitUsagePct}%)
+                        </span>
+                      </>
+                    )}
                   </div>
+
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 whitespace-nowrap">
+                    {percentage.toFixed(1)}%
+                  </span>
                 </div>
 
                 {/* Visual Progress Bar */}
                 <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden relative">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isOverLimit ? 'bg-rose-500' : ''
-                    }`}
+                    className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-rose-500' : ''
+                      }`}
                     style={{
                       width: `${Math.min(100, percentage)}%`,
                       backgroundColor: isOverLimit ? undefined : cat.color,

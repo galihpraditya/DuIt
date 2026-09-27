@@ -134,10 +134,7 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
             <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{t.excelCenterTitle}</h3>
-              <p className="text-[11px] text-slate-400">{t.excelCenterDesc}</p>
-            </div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{t.excelCenterTitle}</h3>
           </div>
           <button
             onClick={onClose}

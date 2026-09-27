@@ -9,11 +9,7 @@ import { BottomNav } from './components/layout/BottomNav';
 import { TransactionList } from './components/transactions/TransactionList';
 import { TransactionModal } from './components/transactions/TransactionModal';
 import { QuickPresets, type QuickPresetItem } from './components/transactions/QuickPresets';
-import { ExcelModal } from './components/excel/ExcelModal';
-
-import { AuthModal } from './components/auth/AuthModal';
 import { ToastContainer, type ToastMessage } from './components/common/Toast';
-import { MonthYearPickerModal } from './components/common/MonthYearPickerModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
@@ -47,6 +43,15 @@ const CategoryManager = lazy(() =>
 );
 const SettingsView = lazy(() =>
   import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView }))
+);
+const ExcelModal = lazy(() =>
+  import('./components/excel/ExcelModal').then((m) => ({ default: m.ExcelModal }))
+);
+const AuthModal = lazy(() =>
+  import('./components/auth/AuthModal').then((m) => ({ default: m.AuthModal }))
+);
+const MonthYearPickerModal = lazy(() =>
+  import('./components/common/MonthYearPickerModal').then((m) => ({ default: m.MonthYearPickerModal }))
 );
 
 const ViewLoaderFallback = () => (
@@ -861,16 +866,18 @@ export function App() {
     }
   };
 
+  const handleOpenNewTransaction = useCallback(() => {
+    setPresetDraft(null);
+    navigate('/transactions/new');
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
-      {/* Top Navbar (hidden on mobile when full-page transaction form is active) */}
-      <div className={isTransactionModalOpen ? 'hidden sm:block' : 'block'}>
+      {/* Top Navbar (hidden on mobile when full-page transaction form or settings is active) */}
+      <div className={isTransactionModalOpen || activeTab === 'settings' ? 'hidden md:block' : 'block'}>
         <Navbar
           onOpenSettings={() => navigate('/settings')}
-          onOpenNewTransaction={() => {
-            setPresetDraft(null);
-            navigate('/transactions/new');
-          }}
+          onOpenNewTransaction={handleOpenNewTransaction}
           activeTab={activeTab}
           onSelectTab={handleTabNavigation}
           onRefresh={handleRefreshData}
@@ -880,7 +887,7 @@ export function App() {
       </div>
 
       {/* Main Content Area */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
         {/* Top Summary Banner: Liquid Glass Stats Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">
@@ -1010,19 +1017,11 @@ export function App() {
             transactions={transactions}
             categories={sortedCategories}
             selectedMonthFilter={selectedMonthFilter}
-            onSelectMonthFilter={handleSelectMonthFilter}
             onEditTransaction={(tx) => {
               navigate(`/transactions/edit/${tx.id}`);
             }}
             onDeleteTransaction={handleDeleteTransaction}
-            onOpenNewTransaction={() => {
-              if (currentUser?.id) {
-                // Background fast refresh before entering transaction input
-                syncService.syncAll(currentUser.id);
-              }
-              setPresetDraft(null);
-              navigate('/transactions/new');
-            }}
+            onOpenNewTransaction={handleOpenNewTransaction}
             onAddTransactionOnDate={handleAddTransactionOnDate}
             hideNominals={hideNominals}
             lang={language}
@@ -1122,14 +1121,7 @@ export function App() {
         <BottomNav
           activeTab={activeTab}
           onSelectTab={handleTabNavigation}
-          onOpenNewTransaction={() => {
-            if (currentUser?.id) {
-              // Background fast refresh before entering transaction input
-              syncService.syncAll(currentUser.id);
-            }
-            setPresetDraft(null);
-            navigate('/transactions/new');
-          }}
+          onOpenNewTransaction={handleOpenNewTransaction}
           t={t}
         />
       )}
@@ -1151,49 +1143,59 @@ export function App() {
       />
 
       {/* Excel Center Modal (Import & Export) */}
-      <ExcelModal
-        isOpen={isExcelModalOpen}
-        onClose={handleCloseModals}
-        transactions={transactions}
-        categories={sortedCategories}
-        lang={language}
-        t={t}
-        onDataChanged={(msg) => {
-          if (msg) showToast(msg, 'success');
-          if (currentUser?.id) {
-            syncService.syncAll(currentUser.id);
-          }
-        }}
-      />
-
-
+      {isExcelModalOpen && (
+        <Suspense fallback={null}>
+          <ExcelModal
+            isOpen={isExcelModalOpen}
+            onClose={handleCloseModals}
+            transactions={transactions}
+            categories={sortedCategories}
+            lang={language}
+            t={t}
+            onDataChanged={(msg) => {
+              if (msg) showToast(msg, 'success');
+              if (currentUser?.id) {
+                syncService.syncAll(currentUser.id);
+              }
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Authentication Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={handleCloseModals}
-        onSuccess={async (user) => {
-          setCurrentUser(user);
-          handleCloseModals();
-          showToast(t.authSuccessLogin, 'success');
-          if (user?.id) {
-            const syncRes = await syncService.syncAll(user.id);
-            if (!syncRes.success) {
-              showToast(syncRes.error || t.cloudSyncFailed, 'error');
-            }
-          }
-        }}
-        t={t}
-      />
+      {isAuthModalOpen && (
+        <Suspense fallback={null}>
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={handleCloseModals}
+            onSuccess={async (user) => {
+              setCurrentUser(user);
+              handleCloseModals();
+              showToast(t.authSuccessLogin, 'success');
+              if (user?.id) {
+                const syncRes = await syncService.syncAll(user.id);
+                if (!syncRes.success) {
+                  showToast(syncRes.error || t.cloudSyncFailed, 'error');
+                }
+              }
+            }}
+            t={t}
+          />
+        </Suspense>
+      )}
 
       {/* Month & Year Picker Modal */}
-      <MonthYearPickerModal
-        isOpen={isMonthPickerOpen}
-        onClose={() => setIsMonthPickerOpen(false)}
-        selectedMonth={selectedMonthFilter}
-        onSelectMonth={(newMonth) => handleSelectMonthFilter(newMonth)}
-        lang={language}
-      />
+      {isMonthPickerOpen && (
+        <Suspense fallback={null}>
+          <MonthYearPickerModal
+            isOpen={isMonthPickerOpen}
+            onClose={() => setIsMonthPickerOpen(false)}
+            selectedMonth={selectedMonthFilter}
+            onSelectMonth={(newMonth) => handleSelectMonthFilter(newMonth)}
+            lang={language}
+          />
+        </Suspense>
+      )}
 
       {/* In-App Toast Feedback Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

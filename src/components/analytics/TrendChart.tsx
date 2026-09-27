@@ -50,13 +50,10 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
     <div className="glass-card p-5 rounded-3xl space-y-4 h-full flex flex-col justify-between">
       {/* Chart Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
-            <BarChart3 className="w-4 h-4 text-emerald-500" />
-            <span>{t.trendChartTitle}</span>
-          </h3>
-          <p className="text-xs text-slate-400">{t.trendChartDesc}</p>
-        </div>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+          <BarChart3 className="w-4 h-4 text-emerald-500" />
+          <span>{t.trendChartTitle}</span>
+        </h3>
 
         {/* Chart Type Toggle */}
         <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">

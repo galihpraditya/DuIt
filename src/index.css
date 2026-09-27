@@ -172,3 +172,20 @@
     transform: scale(0.97);
   }
 }
+
+/* Mobile GPU optimization: Crisp single-layer shadow to avoid high-radius blur rasterization */
+@media (max-width: 640px) {
+  .glass-panel,
+  .glass-card {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .glass-panel,
+  .dark .glass-card {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+}

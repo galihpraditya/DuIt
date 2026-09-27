@@ -121,9 +121,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <PieIcon className="w-5 h-5 text-emerald-500" />
               <span>{t.analyticsHeaderTitle}</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t.activePeriodLabel}{' '}
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{periodLabel}</span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              {periodLabel}
             </p>
           </div>
 

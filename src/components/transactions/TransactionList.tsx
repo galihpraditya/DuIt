@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Search, Filter, ArrowDownRight, Calendar as CalendarIcon, Tag, RotateCcw, CalendarDays, Smartphone, Banknote, Landmark, CreditCard, Plus } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
@@ -6,11 +6,12 @@ import { formatIDR, formatRelativeDateIndo, formatTimeOnly, getMonthWeeks } from
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Language, Translations } from '../../constants/translations';
 
+const PAGE_SIZE = 30;
+
 interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
   selectedMonthFilter: string;
-  onSelectMonthFilter?: (month: string) => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction?: (id: string) => void;
   onOpenNewTransaction: () => void;
@@ -23,25 +24,24 @@ interface TransactionListProps {
 const getPaymentBadge = (method?: PaymentMethodType) => {
   switch (method) {
     case 'E-Wallet':
-      return { label: 'E-Wallet', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40', icon: Smartphone };
+      return { label: 'E-Wallet', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80', icon: Smartphone };
     case 'Tunai':
-      return { label: 'Tunai', color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/40', icon: Banknote };
+      return { label: 'Tunai', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80', icon: Banknote };
     case 'Transfer Bank':
-      return { label: 'Transfer', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/40', icon: Landmark };
+      return { label: 'Transfer', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80', icon: Landmark };
     case 'Kartu Debit':
-      return { label: 'Debit', color: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800/40', icon: CreditCard };
+      return { label: 'Debit', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80', icon: CreditCard };
     case 'Kartu Kredit':
-      return { label: 'Kredit', color: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/40', icon: CreditCard };
+      return { label: 'Kredit', color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80', icon: CreditCard };
     default:
       return null;
   }
 };
 
-export const TransactionList: React.FC<TransactionListProps> = ({
+export const TransactionList: React.FC<TransactionListProps> = memo(({
   transactions,
   categories,
   selectedMonthFilter,
-  onSelectMonthFilter,
   onEditTransaction,
   onOpenNewTransaction,
   onAddTransactionOnDate,
@@ -52,7 +52,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [selectedWeekFilter, setSelectedWeekFilter] = useState<string>('ALL');
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, selectedCategoryFilter, selectedWeekFilter, selectedMonthFilter]);
 
   // Keyboard shortcut listener: Press '/' to focus search input
   useEffect(() => {
@@ -143,11 +150,37 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     isAllTime,
   ]);
 
-  // Group by date (YYYY-MM-DD)
+  // Slice visible items for ultra-fast rendering on mobile
+  const visibleTransactions = useMemo(() => {
+    return filteredTransactions.slice(0, visibleCount);
+  }, [filteredTransactions, visibleCount]);
+
+  // Auto load more when scrolling near bottom
+  useEffect(() => {
+    if (visibleCount >= filteredTransactions.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredTransactions.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    const target = loadMoreRef.current;
+    if (target) {
+      observer.observe(target);
+    }
+    return () => {
+      if (target) observer.unobserve(target);
+      observer.disconnect();
+    };
+  }, [visibleCount, filteredTransactions.length]);
+
+  // Group by date (YYYY-MM-DD) based on visibleTransactions
   const groupedTransactions = useMemo(() => {
     const groups: { [dateKey: string]: { dateStr: string; items: Transaction[]; subtotal: number } } = {};
 
-    filteredTransactions.forEach((tx) => {
+    visibleTransactions.forEach((tx) => {
       try {
         const dateKey = format(parseISO(tx.date), 'yyyy-MM-dd');
         if (!groups[dateKey]) {
@@ -165,7 +198,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     return Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
       .map((key) => groups[key]);
-  }, [filteredTransactions]);
+  }, [visibleTransactions]);
 
   const totalFilteredExpense = useMemo(() => {
     return filteredTransactions.reduce((acc, tx) => acc + tx.amount, 0);
@@ -220,33 +253,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <span>{t.filter}</span>
           </div>
 
-          {/* Quick Period Switcher (Bulan Ini vs Seluruh Transaksi) */}
-          {onSelectMonthFilter && (
-            <div className="flex items-center shrink-0 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
-              <button
-                type="button"
-                onClick={() => onSelectMonthFilter(format(new Date(), 'yyyy-MM'))}
-                className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                  !isAllTime
-                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                {t.thisMonthBadge}
-              </button>
-              <button
-                type="button"
-                onClick={() => onSelectMonthFilter('ALL')}
-                className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                  isAllTime
-                    ? 'bg-emerald-600 text-white font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                {t.allTransactions}
-              </button>
-            </div>
-          )}
 
           {/* Category Dropdown */}
           <select
@@ -426,9 +432,25 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               </div>
             </div>
           ))}
+
+          {/* Progressive Load Trigger & Status */}
+          {filteredTransactions.length > visibleCount && (
+            <div className="pt-2 pb-2 text-center">
+              <div ref={loadMoreRef} className="h-6 w-full" />
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredTransactions.length))}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer active:scale-95 shadow-2xs"
+              >
+                {lang === 'en'
+                  ? `Load More (${visibleTransactions.length} of ${filteredTransactions.length})`
+                  : `Muat Lebih Banyak (${visibleTransactions.length} dari ${filteredTransactions.length})`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
-};
+});
 

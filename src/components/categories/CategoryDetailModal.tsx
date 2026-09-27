@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Search,
@@ -165,7 +166,9 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
 
   const isAllSelected = displayedTxs.length > 0 && selectedIds.size === displayedTxs.length;
 
-  return (
+  if (!isOpen || !category) return null;
+
+  return createPortal(
     <>
       <div 
         className="fixed inset-0 z-50 flex sm:items-center items-end justify-center sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
@@ -506,6 +509,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 };
