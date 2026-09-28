@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Settings,
-  Sun,
-  Moon,
   Globe,
   FileSpreadsheet,
   Check,
@@ -30,6 +28,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import type { UserProfile } from '../../services/authService';
 import { reminderService, type ReminderSettings } from '../../services/reminderService';
 import { aiService } from '../../services/aiService';
+import { ThemeCustomizer } from './ThemeCustomizer';
 
 export interface SettingsViewProps {
   language: Language;
@@ -51,8 +50,8 @@ export interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   language,
   onChangeLanguage,
-  darkMode,
-  onToggleDarkMode,
+  darkMode: _darkMode,
+  onToggleDarkMode: _onToggleDarkMode,
   onOpenExcelModal,
   onResetAllData,
   currentUser,
@@ -290,7 +289,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Sliders className="w-4 h-4" />
           </div>
           <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-            {language === 'id' ? 'Preferensi Tampilan & Bahasa' : 'Appearance & Language'}
+            {t.appearanceAndLanguage}
           </h2>
         </div>
 
@@ -333,47 +332,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Tema */}
-          <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 last:pb-1">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
-                {darkMode ? <Moon className="w-4 h-4 text-emerald-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
-              </div>
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                {t.themeSection}
-              </p>
-            </div>
+        </div>
 
-            {/* Segmented Switcher for Theme */}
-            <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  if (darkMode) onToggleDarkMode();
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center space-x-1.5 ${!darkMode
-                  ? 'bg-white text-emerald-700 font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
-                  }`}
-              >
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span>{t.lightMode}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!darkMode) onToggleDarkMode();
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center space-x-1.5 ${darkMode
-                  ? 'bg-slate-700 text-emerald-400 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                <Moon className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.darkMode}</span>
-              </button>
-            </div>
-          </div>
+        {/* Kustomisasi Tema Komprehensif */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+          <ThemeCustomizer t={t} />
         </div>
       </div>
 

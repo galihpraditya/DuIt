@@ -9,7 +9,45 @@
     <title>DuIt - Smart Expense Tracker & Financial Analytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700;1,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Nunito:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700;1,800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var lang = localStorage.getItem('language');
+          if (lang) document.documentElement.lang = lang;
+
+          var raw = localStorage.getItem('duit_theme_settings');
+          var isDark = false;
+          if (raw) {
+            var s = JSON.parse(raw);
+            isDark = s.mode === 'dark' || (s.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) document.documentElement.classList.add('dark');
+            if (s.surfaceTone) document.documentElement.setAttribute('data-surface', s.surfaceTone);
+            if (s.radius) document.documentElement.setAttribute('data-radius', s.radius);
+            if (s.fontFamily) document.documentElement.setAttribute('data-font', s.fontFamily);
+            if (s.accentColor) document.documentElement.style.setProperty('--brand-primary', s.accentColor);
+
+            var presets = {
+              emerald: {"50":"240 253 244","100":"220 252 231","200":"187 247 208","300":"134 239 172","400":"74 222 128","500":"34 197 94","600":"22 163 74","700":"21 128 61","800":"22 101 52","900":"20 83 45","950":"5 46 22"},
+              blue: {"50":"240 249 255","100":"224 242 254","200":"186 230 253","300":"125 211 252","400":"56 189 248","500":"14 165 233","600":"2 132 199","700":"3 105 161","800":"7 89 133","900":"12 74 110","950":"8 47 73"},
+              purple: {"50":"245 243 255","100":"237 233 254","200":"221 214 254","300":"196 181 253","400":"167 139 250","500":"139 92 246","600":"124 58 237","700":"109 40 217","800":"91 33 182","900":"76 29 149","950":"46 16 101"},
+              amber: {"50":"255 251 235","100":"254 243 199","200":"253 230 138","300":"252 211 77","400":"251 191 36","500":"245 158 11","600":"217 119 6","700":"180 83 9","800":"146 64 14","900":"120 53 15","950":"69 26 3"},
+              rose: {"50":"255 241 242","100":"255 228 230","200":"254 205 211","300":"253 164 175","400":"251 113 133","500":"244 63 94","600":"225 29 72","700":"190 18 60","800":"159 18 57","900":"136 19 55","950":"76 5 25"},
+              teal: {"50":"236 254 255","100":"207 250 254","200":"165 243 252","300":"103 232 249","400":"34 211 238","500":"6 182 212","600":"8 145 178","700":"14 116 144","800":"21 94 117","900":"22 78 99","950":"8 51 68"},
+              indigo: {"50":"238 242 255","100":"224 231 255","200":"199 210 254","300":"165 180 252","400":"129 140 248","500":"99 102 241","600":"79 70 229","700":"67 56 202","800":"55 48 163","900":"49 46 129","950":"30 27 75"}
+            };
+            if (s.accentPresetId && presets[s.accentPresetId]) {
+              var sh = presets[s.accentPresetId];
+              for (var k in sh) document.documentElement.style.setProperty('--brand-' + k, sh[k]);
+            }
+          } else {
+            var old = localStorage.getItem('theme');
+            isDark = old === 'dark' || (!old && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200">
     <div id="root"></div>

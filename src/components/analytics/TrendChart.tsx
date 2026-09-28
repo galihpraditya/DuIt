@@ -125,7 +125,7 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                 )}
                 <Bar
                   dataKey="total"
-                  fill="#10b981"
+                  fill="var(--brand-primary, #10b981)"
                   radius={[6, 6, 0, 0]}
                   isAnimationActive={false}
                 />
@@ -134,8 +134,8 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
               <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="var(--brand-primary, #10b981)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--brand-primary, #10b981)" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -173,7 +173,7 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                 <Area
                   type="monotone"
                   dataKey="total"
-                  stroke="#10b981"
+                  stroke="var(--brand-primary, #10b981)"
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#colorExpense)"

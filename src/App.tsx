@@ -16,8 +16,8 @@ import { translations, type Language } from './constants/translations';
 import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
 import { reminderService } from './services/reminderService';
+import { themeService } from './services/themeService';
 import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock } from 'lucide-react';
-import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
@@ -67,12 +67,7 @@ export function App() {
   const [searchParams] = useSearchParams();
   const pathname = location.pathname;
 
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return (
-      localStorage.getItem('theme') === 'dark' ||
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    );
-  });
+  const [darkMode, setDarkMode] = useState<boolean>(() => themeService.isDark());
 
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('language');
@@ -353,37 +348,17 @@ export function App() {
     };
   }, [currentUser?.id]);
 
-  // Sync Dark Mode with DOM, Meta Theme Color, and Native Status Bar
+  // Initialize theme service & sync with app state
   useEffect(() => {
-    const themeBg = darkMode ? '#0f172a' : '#f8fafc';
-    
-    // Update HTML meta theme-color (affects browser and Android PWA chrome)
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', themeBg);
-    }
-
-    const updateStatusBar = async (isDark: boolean) => {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
-          await StatusBar.setOverlaysWebView({ overlay: true });
-        } catch (e) {
-          console.error('StatusBar not available', e);
-        }
-      }
+    themeService.init();
+    const unsubscribe = themeService.subscribe((_settings, isDark) => {
+      setDarkMode(isDark);
+    });
+    return () => {
+      unsubscribe();
+      themeService.cleanup();
     };
-
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      updateStatusBar(true);
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      updateStatusBar(false);
-    }
-  }, [darkMode]);
+  }, []);
 
   // Global Keyboard Shortcuts (N for new transaction, S for settings)
   useEffect(() => {
@@ -418,10 +393,11 @@ export function App() {
     return () => window.removeEventListener('duit:open-new-transaction', handleOpenNewTxFromReminder);
   }, [navigate]);
 
-  // Sync Language with LocalStorage
+  // Sync Language with LocalStorage & DOM
   const handleLanguageChange = (newLang: Language) => {
     setLanguage(newLang);
     localStorage.setItem('language', newLang);
+    document.documentElement.lang = newLang;
     showToast(newLang === 'id' ? 'Bahasa diubah ke Bahasa Indonesia' : 'Language changed to English', 'info');
   };
 
@@ -872,7 +848,7 @@ export function App() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen app-surface bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
       {/* Top Navbar (hidden on mobile when full-page transaction form or settings is active) */}
       <div className={isTransactionModalOpen || activeTab === 'settings' ? 'hidden md:block' : 'block'}>
         <Navbar
@@ -1085,7 +1061,11 @@ export function App() {
                 language={language}
                 onChangeLanguage={handleLanguageChange}
                 darkMode={darkMode}
-                onToggleDarkMode={() => setDarkMode(!darkMode)}
+                onToggleDarkMode={() => {
+                  const next = !darkMode;
+                  setDarkMode(next);
+                  themeService.updateSettings({ mode: next ? 'dark' : 'light' });
+                }}
                 onOpenExcelModal={() => navigate('/excel')}
                 onResetAllData={handleResetAllData}
                 currentUser={currentUser}

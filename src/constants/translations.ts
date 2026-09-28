@@ -206,10 +206,50 @@ export interface Translations {
   // Settings Modal
   settingsTitle: string;
   settingsDesc: string;
+  appearanceAndLanguage: string;
   languageSection: string;
   themeSection: string;
+  themeModeTitle: string;
   lightMode: string;
   darkMode: string;
+  systemMode: string;
+  surfaceMoodTitle: string;
+  surfaceDefault: string;
+  surfaceDefaultDesc: string;
+  surfaceOled: string;
+  surfaceOledDesc: string;
+  surfaceWarm: string;
+  surfaceWarmDesc: string;
+  accentColorTitle: string;
+  customColorLabel: string;
+  hexCodeLabel: string;
+  colorEmerald: string;
+  colorBlue: string;
+  colorPurple: string;
+  colorAmber: string;
+  colorRose: string;
+  colorTeal: string;
+  colorIndigo: string;
+  radiusTitle: string;
+  radiusRounded: string;
+  radiusCrisp: string;
+  fontTitle: string;
+  fontSubtitle: string;
+  fontJakarta: string;
+  fontJakartaDesc: string;
+  fontNunito: string;
+  fontNunitoDesc: string;
+  fontLora: string;
+  fontLoraDesc: string;
+  fontInter: string;
+  fontInterDesc: string;
+  fontOutfit: string;
+  fontOutfitDesc: string;
+  previewTitle: string;
+  previewBalanceLabel: string;
+  previewCategoryFood: string;
+  resetThemeBtn: string;
+  themeResetSuccess: string;
   dataManagementSection: string;
   dataManagementDesc: string;
   openExcelCenter: string;
@@ -575,10 +615,50 @@ export const translations: Record<Language, Translations> = {
     // Settings Modal
     settingsTitle: 'Pengaturan',
     settingsDesc: '',
-    languageSection: 'Bahasa / Language',
-    themeSection: 'Tema Aplikasi',
+    appearanceAndLanguage: 'Preferensi Tampilan & Bahasa',
+    languageSection: 'Pilihan Bahasa',
+    themeSection: 'Tema & Tampilan',
+    themeModeTitle: 'Mode Tampilan',
     lightMode: 'Mode Terang',
     darkMode: 'Mode Gelap',
+    systemMode: 'Ikuti Sistem',
+    surfaceMoodTitle: 'Karakter Permukaan',
+    surfaceDefault: 'Standar Slate',
+    surfaceDefaultDesc: 'Bersih & seimbang',
+    surfaceOled: 'OLED Hitam Pekat',
+    surfaceOledDesc: 'Hitam murni (#000000) AMOLED',
+    surfaceWarm: 'Warm Sepia',
+    surfaceWarmDesc: 'Nuansa hangat ramah mata',
+    accentColorTitle: 'Warna Aksen Utama',
+    customColorLabel: 'Kustom',
+    hexCodeLabel: 'Kode Hex',
+    colorEmerald: 'Zamrud',
+    colorBlue: 'Biru',
+    colorPurple: 'Ungu',
+    colorAmber: 'Oranye',
+    colorRose: 'Mawar',
+    colorTeal: 'Toska',
+    colorIndigo: 'Indigo',
+    radiusTitle: 'Gaya Sudut',
+    radiusRounded: 'Bulat Lembut',
+    radiusCrisp: 'Tajam Ringkas',
+    fontTitle: 'Gaya Teks & Tipografi',
+    fontSubtitle: 'Pilih karakter huruf yang sesuai dengan selera visual Anda',
+    fontJakarta: 'Plus Jakarta Sans',
+    fontJakartaDesc: 'Modern & Geometris',
+    fontNunito: 'Nunito',
+    fontNunitoDesc: 'Soft & Ramah (Rounded)',
+    fontLora: 'Lora',
+    fontLoraDesc: 'Classic & Elegan (Serif)',
+    fontInter: 'Inter',
+    fontInterDesc: 'Netral & Fungsional',
+    fontOutfit: 'Outfit',
+    fontOutfitDesc: 'Stylish & Trendi',
+    previewTitle: 'Pratinjau Langsung',
+    previewBalanceLabel: 'Total Pengeluaran Bulan Ini',
+    previewCategoryFood: 'Makanan',
+    resetThemeBtn: 'Kembalikan Tema ke Default',
+    themeResetSuccess: 'Tema telah dikembalikan ke pengaturan default',
     dataManagementSection: 'Manajemen Data & Excel',
     dataManagementDesc: '',
     openExcelCenter: 'Buka Pusat Data & Excel',
@@ -945,10 +1025,50 @@ export const translations: Record<Language, Translations> = {
     // Settings Modal
     settingsTitle: 'Settings',
     settingsDesc: '',
-    languageSection: 'Language / Bahasa',
-    themeSection: 'App Theme',
+    appearanceAndLanguage: 'Appearance & Language',
+    languageSection: 'Language',
+    themeSection: 'Theme & Appearance',
+    themeModeTitle: 'Display Mode',
     lightMode: 'Light Mode',
     darkMode: 'Dark Mode',
+    systemMode: 'Follow System',
+    surfaceMoodTitle: 'Surface Mood',
+    surfaceDefault: 'Default Slate',
+    surfaceDefaultDesc: 'Clean & balanced',
+    surfaceOled: 'Pure OLED Black',
+    surfaceOledDesc: 'Pure AMOLED black (#000000)',
+    surfaceWarm: 'Warm Sepia',
+    surfaceWarmDesc: 'Cozy tone, easy on eyes',
+    accentColorTitle: 'Accent Color',
+    customColorLabel: 'Custom',
+    hexCodeLabel: 'Hex Code',
+    colorEmerald: 'Emerald',
+    colorBlue: 'Blue',
+    colorPurple: 'Violet',
+    colorAmber: 'Amber',
+    colorRose: 'Rose',
+    colorTeal: 'Teal',
+    colorIndigo: 'Indigo',
+    radiusTitle: 'Corner Style',
+    radiusRounded: 'Rounded Modern',
+    radiusCrisp: 'Crisp Compact',
+    fontTitle: 'Typography & Font Style',
+    fontSubtitle: 'Choose the font character that best fits your visual taste',
+    fontJakarta: 'Plus Jakarta Sans',
+    fontJakartaDesc: 'Modern & Clean',
+    fontNunito: 'Nunito',
+    fontNunitoDesc: 'Soft & Friendly (Rounded)',
+    fontLora: 'Lora',
+    fontLoraDesc: 'Classic & Editorial (Serif)',
+    fontInter: 'Inter',
+    fontInterDesc: 'Neutral & Functional',
+    fontOutfit: 'Outfit',
+    fontOutfitDesc: 'Stylish & Display',
+    previewTitle: 'Live Preview',
+    previewBalanceLabel: 'Total Spent This Month',
+    previewCategoryFood: 'Food',
+    resetThemeBtn: 'Reset Theme to Default',
+    themeResetSuccess: 'Theme has been reset to defaults',
     dataManagementSection: 'Data & Excel Center',
     dataManagementDesc: '',
     openExcelCenter: 'Open Data & Excel Center',
