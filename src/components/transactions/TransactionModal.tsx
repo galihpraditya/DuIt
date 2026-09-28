@@ -21,7 +21,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { format } from 'date-fns';
 import type { Language, Translations } from '../../constants/translations';
 import { SmartAiInput } from './SmartAiInput';
-import { aiService, type ParsedTransactionResult } from '../../services/aiService';
+import type { ParsedTransactionResult } from '../../services/aiService';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -47,6 +47,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   initialData,
   onOpenCategoryManager,
   onDelete,
+  lang = 'id',
   t,
 }) => {
   const [amountStr, setAmountStr] = useState('');
@@ -368,14 +369,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </div>
                 )}
 
-                {/* Smart AI Natural Input (Hanya aktif jika API Key telah terisi di Pengaturan) */}
-                {aiService.hasApiKey() && (
-                  <SmartAiInput
-                    categories={categories}
-                    onParsed={handleAiParsed}
-                    t={t}
-                  />
-                )}
+                {/* Smart AI & Voice Natural Input (Aktif selalu: via Groq AI jika ada key, atau Regex & Suara lokal jika tanpa key) */}
+                <SmartAiInput
+                  categories={categories}
+                  onParsed={handleAiParsed}
+                  t={t}
+                  language={lang}
+                />
 
                 {batchItems && batchItems.length > 0 ? (
                   /* Batch Review List View */

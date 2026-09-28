@@ -1,39 +1,53 @@
-# DuIt - Personal Expense Tracker & Financial Analytics
+# DuIt - Smart Expense Tracker & Financial Analytics
 
-DuIt is a local-first personal expense tracker and financial analytics app. Built with PWA standards and Capacitor, it runs on the web, installs as a standalone web app, and compiles into an Android APK.
+[![Version](https://img.shields.io/badge/version-2.0.0-emerald.svg)](package.json)
+[![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF.svg)](https://capacitorjs.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com/)
+[![Dexie](https://img.shields.io/badge/Dexie.js-IndexedDB-22c55e.svg)](https://dexie.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A modern, local-first personal finance tracker built with **React 19**, **TypeScript**, and **Tailwind CSS**. Works 100% offline with **Dexie.js (IndexedDB)**, synchronizes across devices with **Supabase (PostgreSQL)**, supports smart natural language & voice input via **Groq AI**, and packages into native Android via **Capacitor 8**.
 
 ---
 
-## Key Features
+## Quick Links
 
-- **Expense Management**: Log income and expenses with categories, payment methods, tags, and notes.
-- **Category Management**: Set category icons, colors, and monthly budget limits.
-- **Budget Monitoring**: Set spending targets per category and track progress in real time.
-- **Visual Analytics**: Interactive breakdowns, expense distributions, and monthly spending trends powered by Recharts.
-- **Recurring Expenses**: Track subscriptions and bills with due-date reminders.
-- **Data Portability**: Export and import data in Excel (.xlsx) and JSON formats.
-- **Offline & Cloud Sync**: Store data locally with IndexedDB and sync across Web and Android via Supabase.
+- **Live Web App**: [https://duit.galihh.me](https://duit.galihh.me)
+- **Download Android APK**: [DuIt-Wallet-latest.apk](https://github.com/galihpraditya/DuIt/releases/latest/download/DuIt-Wallet-latest.apk)
+- **Releases**: [GitHub Releases](https://github.com/galihpraditya/DuIt/releases)
+- **Database Schema**: [`supabase_schema.sql`](supabase_schema.sql)
+
+---
+
+## Features
+
+- **Local-First & Offline**: Instant zero-latency CRUD operations using IndexedDB (`Dexie.js 4`). Fully functional without internet connection.
+- **Cloud Sync & RLS**: Deterministic two-way sync with Supabase PostgreSQL, secured by Row Level Security (`auth.uid() = user_id`) and composite primary keys `(id, user_id)`.
+- **Smart AI & Voice Input**:
+  - Natural language transaction parsing via **Groq Cloud API** (`openai/gpt-oss-120b`).
+  - Voice-to-text recording in Indonesian (`id-ID`) using the Web Speech API.
+  - Offline heuristic regex parser fallback when offline or without an API key.
+  - Setup key in `.env` or directly inside the app Settings.
+- **Deep Personalization**:
+  - 3 Modes (Light, Dark, System) & 3 Surface Tones (Default, OLED True Black, Warm).
+  - 7 curated color presets + custom Hex color picker with dynamic runtime CSS variables.
+  - 5 typography options: Plus Jakarta Sans, Inter, Nunito, Outfit, and Lora.
+- **Visual Analytics**: Interactive Recharts pie breakdowns, daily spending trends, and monthly comparisons (code-split for fast loading).
+- **Budgets & Recurring Expenses**: Per-category monthly spending limits with progress indicators, over-budget alerts, and subscription tracking.
+- **Smart Daily Reminder**: Scheduled Web Notification & PWA alert (only triggers if no transactions were logged that day).
+- **Data Portability**: Dual-sheet Excel export/import (`.xlsx` via SheetJS) and full JSON backup/restore.
+- **Privacy & Convenience**: Balance masking toggle (`••••••`), one-tap quick preset chips, and native Android back-button handling.
 
 ---
 
 ## Tech Stack
 
-- **Frontend Core**: React 19, TypeScript, Vite
-- **Styling**: Tailwind CSS, Framer Motion
-- **Local Storage**: Dexie.js (IndexedDB wrapper)
-- **Cloud Backend & Auth**: Supabase (PostgreSQL, Row Level Security, Auth)
-- **Mobile Runtime**: Capacitor (Android bridge)
-- **Data Visualization**: Recharts, Lucide Icons
-- **Data Processing**: SheetJS (xlsx), date-fns
-
----
-
-## Architecture & Data Storage
-
-DuIt uses a local-first, cloud-synced model:
-
-1. **Offline Storage**: Transactions, categories, budgets, and recurring expenses save locally in IndexedDB (`Dexie.js`). The app works without an internet connection.
-2. **Cloud Sync**: When signed in through Supabase, data syncs with a PostgreSQL database protected by Row Level Security (RLS), so users only access their own records.
+- **Frontend**: React 19, TypeScript, Vite 8, Tailwind CSS, Framer Motion, Lucide Icons
+- **Storage**: Dexie.js (IndexedDB) & Supabase (PostgreSQL + Auth)
+- **AI & Audio**: Groq Cloud API, Web Speech API (`SpeechRecognition`)
+- **Mobile & PWA**: Capacitor 8 (Android, Status Bar, Keyboard), Vite PWA
+- **Analytics & Tools**: Recharts, SheetJS (xlsx), date-fns, Oxlint
 
 ---
 
@@ -41,99 +55,69 @@ DuIt uses a local-first, cloud-synced model:
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- npm 9 or higher
-- Android Studio (optional, for local Android APK compilation)
+- Node.js 20+ / 22 LTS
+- npm 10+
 
-### Installation
+### Setup
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/DuIt.git
+   git clone https://github.com/galihpraditya/DuIt.git
    cd DuIt
-   ```
-
-2. Install dependencies:
-   ```bash
    npm install
    ```
 
-3. Configure environment variables (optional for cloud sync):
-   Copy `.env.example` to `.env` and set your Supabase credentials:
+2. **Environment Variables**:
+   Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
-   Edit `.env`:
    ```env
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-public-key
-   VITE_APP_URL=https://duit-wallet.vercel.app
+   VITE_APP_URL=https://duit.galihh.me
+
+   # Optional: Default Groq API key (can also be entered in app Settings)
+   VITE_GROQ_API_KEY=your-groq-key
    ```
 
-4. **Configure Supabase Auth URLs (required for email verification)**:
-   In the Supabase Dashboard, open **Authentication > URL Configuration** and set:
-   - **Site URL**: `https://duit-wallet.vercel.app`
-   - **Redirect URLs**: `https://duit-wallet.vercel.app/**` plus `http://localhost:5173/**` (for local development)
+3. **Supabase Database**:
+   Open **SQL Editor** in your Supabase Dashboard and run [`supabase_schema.sql`](supabase_schema.sql).
 
-   Without this, confirmation email links redirect to `localhost` instead of the deployed app.
-
-5. Start the local development server:
+4. **Start Development**:
    ```bash
    npm run dev
    ```
-
-6. Open the application at `http://localhost:5173`.
-
----
-
-## Deployment
-
-### Web Deployment (Vercel)
-
-DuIt is configured for SPA deployment on Vercel:
-
-1. Push your repository to GitHub.
-2. Import the project in the [Vercel Dashboard](https://vercel.com).
-3. Under **Project Settings > Environment Variables**, define `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-4. Deploy. The included `vercel.json` handles SPA routing rewrites.
-
-### Automated Android APK Builds (GitHub Actions)
-
-A GitHub Actions workflow at `.github/workflows/build-apk.yml` builds and releases Android APKs automatically:
-
-1. Go to **Repository Settings > Secrets and variables > Actions** on GitHub.
-2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets.
-3. Push a version tag to trigger a release:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-4. Download the release APK from the GitHub Releases page.
-
-### Manual Android Build (Local)
-
-1. Build web assets and sync with Capacitor:
-   ```bash
-   npm run cap:build
-   ```
-
-2. Open the Android project in Android Studio:
-   ```bash
-   npm run cap:open
-   ```
-
-3. In Android Studio, select **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+   Open `http://localhost:5173`.
 
 ---
 
-## Security
+## Available Scripts
 
-- **Row Level Security (RLS)**: Database policies restrict data access so users can only view, insert, update, and delete their own records (`auth.uid() = user_id`).
-- **Encrypted Transmission**: Cloud traffic uses TLS/HTTPS encryption (`android:usesCleartextTraffic="false"`).
-- **Client Security**: Secret service role keys stay out of the client app. Only public anonymous keys are exposed alongside RLS policies.
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Start Vite development server with HMR and `/groq-api` proxy |
+| `npm run build` | Type-check (`tsc -b`) and bundle for production |
+| `npm run lint` | Run ultra-fast Oxlint across the project |
+| `npm run preview` | Preview production build locally |
+| `npm run cap:sync` | Build web assets and sync to Capacitor Android |
+| `npm run cap:open` | Open native Android project in Android Studio |
+| `npm run cap:build` | Build and sync directly to Capacitor Android |
+
+---
+
+## Android Build
+
+- **Automated CI/CD**: Pushing a version tag (e.g. `git tag v2.0.0 && git push origin v2.0.0`) automatically builds and publishes release APKs to GitHub Releases.
+- **Local Build**:
+  ```bash
+  npm run cap:build
+  npm run cap:open
+  ```
+  Then build the APK in Android Studio (**Build > Build Bundle(s) / APK(s) > Build APK(s)**).
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is open-source under the [MIT License](LICENSE).

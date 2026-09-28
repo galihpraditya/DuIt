@@ -8,12 +8,14 @@ interface SmartAiInputProps {
   categories: Category[];
   onParsed: (results: ParsedTransactionResult[]) => void;
   t: Translations;
+  language?: string;
 }
 
 export const SmartAiInput: React.FC<SmartAiInputProps> = ({
   categories,
   onParsed,
   t,
+  language = 'id',
 }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,7 +31,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
       if (recognizerRef.current) {
         try {
           recognizerRef.current.abort();
-        } catch {}
+        } catch { }
       }
     };
   }, []);
@@ -46,12 +48,13 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
     if (isListening && recognizerRef.current) {
       try {
         recognizerRef.current.stop();
-      } catch {}
+      } catch { }
       setIsListening(false);
       return;
     }
 
     try {
+      const speechLang = language === 'en' ? 'en-US' : 'id-ID';
       const recognizer = aiService.createSpeechRecognizer(
         (transcript) => {
           if (transcript.trim()) {
@@ -70,7 +73,8 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
         },
         () => {
           setIsListening(false);
-        }
+        },
+        speechLang
       );
 
       if (recognizer) {
@@ -124,7 +128,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
     <div className="rounded-2xl p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 transition-all">
       {/* Top Bar Label */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+        <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
           <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>{t.aiSection}</span>
         </div>

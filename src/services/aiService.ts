@@ -355,21 +355,25 @@ Rules:
       // Default pembayaran adalah Tunai, kecuali disebutkan khusus
       let paymentMethod: PaymentMethodType = 'Tunai';
       const segLower = seg.toLowerCase();
-      if (segLower.includes('qris') || segLower.includes('debit')) {
-        paymentMethod = 'Kartu Debit';
-      } else if (segLower.includes('transfer') || segLower.includes('bca') || segLower.includes('mandiri')) {
-        paymentMethod = 'Transfer Bank';
-      } else if (segLower.includes('gopay') || segLower.includes('ovo') || segLower.includes('dana') || segLower.includes('wallet')) {
+      if (segLower.includes('qris') || segLower.includes('gopay') || segLower.includes('ovo') || segLower.includes('dana') || segLower.includes('shopee') || segLower.includes('wallet')) {
         paymentMethod = 'E-Wallet';
-      } else if (segLower.includes('kredit')) {
+      } else if (segLower.includes('debit') || segLower.includes('atm')) {
+        paymentMethod = 'Kartu Debit';
+      } else if (segLower.includes('transfer') || segLower.includes('bca') || segLower.includes('mandiri') || segLower.includes('bni') || segLower.includes('bri') || segLower.includes('seabank') || segLower.includes('jago')) {
+        paymentMethod = 'Transfer Bank';
+      } else if (segLower.includes('kredit') || segLower.includes('cc') || segLower.includes('paylater')) {
         paymentMethod = 'Kartu Kredit';
       }
 
       // Deteksi kategori otomatis berdasarkan kata kunci
       let categoryId = categories[0]?.id || 'cat-food';
-      const foodKeywords = ['makan', 'bakso', 'mie', 'nasi', 'kopi', 'sate', 'ayam', 'roti', 'snack', 'minum', 'soto'];
-      const transportKeywords = ['bensin', 'pertalite', 'pertamax', 'parkir', 'tol', 'gojek', 'grab', 'ojol'];
-      const billKeywords = ['listrik', 'pln', 'wifi', 'pulsa', 'air', 'pdam', 'kuota', 'tagihan'];
+      const foodKeywords = ['makan', 'bakso', 'mie', 'nasi', 'kopi', 'sate', 'ayam', 'roti', 'snack', 'minum', 'soto', 'kafe', 'cafe', 'resto', 'jajan', 'lunch', 'dinner', 'sarapan'];
+      const transportKeywords = ['bensin', 'pertalite', 'pertamax', 'parkir', 'tol', 'gojek', 'grab', 'ojol', 'kereta', 'mrt', 'krl', 'busway', 'angkot', 'taksi', 'taxi'];
+      const billKeywords = ['listrik', 'pln', 'wifi', 'indihome', 'pulsa', 'air', 'pdam', 'kuota', 'tagihan', 'iuran', 'bpjs'];
+      const shoppingKeywords = ['belanja', 'baju', 'kaos', 'celana', 'sepatu', 'tas', 'shopee', 'tokopedia', 'lazada', 'mall', 'supermarket', 'indomaret', 'alfamart'];
+      const healthKeywords = ['obat', 'dokter', 'apotek', 'apotik', 'vitamin', 'klinik', 'rs', 'rumah sakit', 'periksa'];
+      const entertainmentKeywords = ['nonton', 'bioskop', 'cinema', 'game', 'steam', 'spotify', 'netflix', 'hobi', 'wisata', 'hiburan'];
+      const educationKeywords = ['buku', 'kursus', 'kuliah', 'sekolah', 'les', 'ujian', 'spp'];
 
       if (foodKeywords.some((k) => segLower.includes(k))) {
         const found = categories.find((c) => c.name.toLowerCase().includes('makan') || c.id.includes('food'));
@@ -379,6 +383,18 @@ Rules:
         if (found) categoryId = found.id;
       } else if (billKeywords.some((k) => segLower.includes(k))) {
         const found = categories.find((c) => c.name.toLowerCase().includes('tagihan') || c.id.includes('bills'));
+        if (found) categoryId = found.id;
+      } else if (shoppingKeywords.some((k) => segLower.includes(k))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes('belanja') || c.id.includes('shopping'));
+        if (found) categoryId = found.id;
+      } else if (healthKeywords.some((k) => segLower.includes(k))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes('sehat') || c.id.includes('health'));
+        if (found) categoryId = found.id;
+      } else if (entertainmentKeywords.some((k) => segLower.includes(k))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes('hibur') || c.id.includes('entertain'));
+        if (found) categoryId = found.id;
+      } else if (educationKeywords.some((k) => segLower.includes(k))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes('edukasi') || c.id.includes('education'));
         if (found) categoryId = found.id;
       }
 
@@ -410,7 +426,8 @@ Rules:
   createSpeechRecognizer(
     onResult: (transcript: string) => void,
     onError: (err: any) => void,
-    onEnd: () => void
+    onEnd: () => void,
+    lang: string = 'id-ID'
   ): any | null {
     if (!this.isSpeechSupported()) return null;
 
@@ -418,7 +435,7 @@ Rules:
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     const recognizer = new SpeechRecognition();
-    recognizer.lang = 'id-ID';
+    recognizer.lang = lang;
     recognizer.continuous = false;
     recognizer.interimResults = false;
 
