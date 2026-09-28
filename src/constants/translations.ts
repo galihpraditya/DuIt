@@ -260,6 +260,11 @@ export interface Translations {
   resetConfirmMsg: string;
   resetConfirmBtn: string;
   versionLabel: string;
+  installAppBannerSubtitle: string;
+  installPwaBtn: string;
+  downloadApkBtn: string;
+  downloadApkNativeTitle: string;
+  downloadApkNativeDesc: string;
   // Daily Reminder Settings
   reminderSection: string;
   reminderDesc: string;
@@ -668,7 +673,12 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset Seluruh Data Aplikasi',
     resetConfirmMsg: 'Peringatan: Tindakan ini akan menghapus permanen semua catatan pengeluaran dan kategori Anda. Lanjutkan?',
     resetConfirmBtn: 'Reset Semua Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0',
+    versionLabel: 'DuIt Expense Tracker v2.0.0 • Offline-First PWA',
+    installAppBannerSubtitle: 'Pasang di HP Anda untuk akses offline instan & lebih cepat',
+    installPwaBtn: 'Pasang Cepat',
+    downloadApkBtn: 'Unduh APK',
+    downloadApkNativeTitle: 'Aplikasi Android Native (APK)',
+    downloadApkNativeDesc: 'Unduh file installer APK v2.0.0 langsung untuk dipasang mandiri di perangkat Android Anda.',
 
     // Daily Reminder Settings
     reminderSection: 'Pengingat Pengeluaran Harian',
@@ -1078,7 +1088,12 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset All Application Data',
     resetConfirmMsg: 'Warning: This will permanently wipe all your expense records and categories. Proceed?',
     resetConfirmBtn: 'Reset All Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0 • Offline-First PWA',
+    versionLabel: 'DuIt Expense Tracker v2.0.0 • Offline-First PWA',
+    installAppBannerSubtitle: 'Install on your phone for instant offline access & speed',
+    installPwaBtn: 'Quick Install',
+    downloadApkBtn: 'Download APK',
+    downloadApkNativeTitle: 'Native Android App (APK)',
+    downloadApkNativeDesc: 'Download the v2.0.0 APK installer directly for standalone installation on your Android device.',
 
     // Daily Reminder Settings
     reminderSection: 'Daily Expense Reminder',

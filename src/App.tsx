@@ -10,6 +10,7 @@ import { TransactionList } from './components/transactions/TransactionList';
 import { TransactionModal } from './components/transactions/TransactionModal';
 import { QuickPresets, type QuickPresetItem } from './components/transactions/QuickPresets';
 import { ToastContainer, type ToastMessage } from './components/common/Toast';
+import { MobileAppBanner } from './components/common/MobileAppBanner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { formatIDR, generateId } from './utils/formatters';
 import { translations, type Language } from './constants/translations';
@@ -864,6 +865,9 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10 space-y-5">
+        {/* Mobile App Smart Install / Download Banner */}
+        <MobileAppBanner t={t} />
+
         {/* Top Summary Banner: Liquid Glass Stats Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">

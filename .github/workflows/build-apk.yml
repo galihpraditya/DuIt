@@ -67,8 +67,10 @@ jobs:
           # Salin APK Release (yang sudah ditandatangani)
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
             cp android/app/build/outputs/apk/release/app-release.apk "release-output/DuIt-Wallet-${SAFE_REF}.apk"
+            cp android/app/build/outputs/apk/release/app-release.apk "release-output/DuIt-Wallet-latest.apk"
           elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
             cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-output/DuIt-Wallet-${SAFE_REF}-unsigned.apk"
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-output/DuIt-Wallet-latest.apk"
           fi
 
           # Salin APK Debug untuk testing
