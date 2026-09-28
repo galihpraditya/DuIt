@@ -2,8 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/groq-api': {
+        target: 'https://api.groq.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/groq-api/, ''),
+        secure: false,
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -31,4 +40,29 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router-dom/')
+          ) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/dexie')) {
+            return 'vendor-db';
+          }
+          if (id.includes('node_modules/@supabase')) {
+            return 'vendor-cloud';
+          }
+          if (id.includes('node_modules/date-fns')) {
+            return 'vendor-date';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 });

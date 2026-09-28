@@ -172,3 +172,124 @@
     transform: scale(0.97);
   }
 }
+
+/* Mobile GPU optimization: Crisp single-layer shadow to avoid high-radius blur rasterization */
+@media (max-width: 640px) {
+  .glass-panel,
+  .glass-card {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .glass-panel,
+  .dark .glass-card {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* ========================================================
+   Theme System — Variables, Surfaces, Typography & Radius
+   ======================================================== */
+:root {
+  /* Default Emerald 500 palette triplets */
+  --brand-50: 240 253 244;
+  --brand-100: 220 252 231;
+  --brand-200: 187 247 208;
+  --brand-300: 134 239 172;
+  --brand-400: 74 222 128;
+  --brand-500: 34 197 94;
+  --brand-600: 22 163 74;
+  --brand-700: 21 128 61;
+  --brand-800: 22 101 52;
+  --brand-900: 20 83 45;
+  --brand-950: 5 46 22;
+  --brand-primary: #10b981;
+  --font-ui: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+/* Typography Options */
+[data-font="jakarta"] {
+  --font-ui: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+[data-font="nunito"] {
+  --font-ui: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+[data-font="lora"] {
+  --font-ui: "Lora", "Playfair Display", Georgia, serif;
+}
+[data-font="inter"] {
+  --font-ui: "Inter", system-ui, sans-serif;
+}
+[data-font="outfit"] {
+  --font-ui: "Outfit", system-ui, sans-serif;
+}
+
+/* Surface Mood: Pure OLED Black (AMOLED display optimization) */
+.dark[data-surface="oled"] body,
+.dark[data-surface="oled"] .min-h-screen,
+.dark[data-surface="oled"] .app-surface {
+  background-color: #000000 !important;
+}
+.dark[data-surface="oled"] .glass-panel,
+.dark[data-surface="oled"] .glass-card,
+.dark[data-surface="oled"] .glass-modal {
+  background-color: #07090e !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.9) !important;
+}
+.dark[data-surface="oled"] .glass-pill {
+  background-color: #0f141f !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.dark[data-surface="oled"] .glass-input {
+  background-color: #05070a !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Surface Mood: Warm Sepia */
+[data-surface="warm"] body,
+[data-surface="warm"] .min-h-screen,
+[data-surface="warm"] .app-surface {
+  background-color: #faf7f2 !important;
+}
+[data-surface="warm"] .glass-panel,
+[data-surface="warm"] .glass-card {
+  background-color: #ffffff !important;
+  border-color: #e8e2d8 !important;
+}
+.dark[data-surface="warm"] body,
+.dark[data-surface="warm"] .min-h-screen,
+.dark[data-surface="warm"] .app-surface {
+  background-color: #171513 !important;
+}
+.dark[data-surface="warm"] .glass-panel,
+.dark[data-surface="warm"] .glass-card,
+.dark[data-surface="warm"] .glass-modal {
+  background-color: #211e1b !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+.dark[data-surface="warm"] .glass-pill {
+  background-color: #2a2622 !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+.dark[data-surface="warm"] .glass-input {
+  background-color: #1c1917 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Corner Radius: Crisp Minimalist */
+[data-radius="crisp"] .rounded-4xl {
+  border-radius: 1rem !important;
+}
+[data-radius="crisp"] .rounded-3xl {
+  border-radius: 0.75rem !important;
+}
+[data-radius="crisp"] .rounded-2xl {
+  border-radius: 0.5rem !important;
+}
+[data-radius="crisp"] .rounded-xl {
+  border-radius: 0.375rem !important;
+}

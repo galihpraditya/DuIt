@@ -5,8 +5,17 @@ export interface Category {
   color: string;
   budgetLimit?: number; // Optional monthly limit in IDR
   isDefault?: boolean;
+  order?: number; // Sorting index for manual/custom ordering
   createdAt: string;
 }
+
+export type CategorySortMode =
+  | 'manual'
+  | 'most_used'
+  | 'highest_amount'
+  | 'name_asc'
+  | 'name_desc'
+  | 'newest';
 
 export type PaymentMethodType = 'Tunai' | 'Transfer Bank' | 'E-Wallet' | 'QRIS / E-Wallet' | 'Kartu Debit' | 'Kartu Kredit' | 'Lainnya';
 

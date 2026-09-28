@@ -239,13 +239,15 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
   await db.transactions.bulkAdd(newTransactions);
 
   // Sync ke cloud secara otomatis agar tidak dihapus oleh syncAll()
-  import('./supabaseClient').then(async ({ supabase, isSupabaseConfigured }) => {
+  import('./supabaseClient').then(async ({ isSupabaseConfigured }) => {
     if (isSupabaseConfigured) {
       import('./authService').then(async ({ authService }) => {
         const user = await authService.getCurrentUser();
         if (user?.id) {
           try {
-            // Upload kategori baru
+            const { safeUpsert } = await import('./syncService');
+
+            // Upload kategori baru terlebih dahulu
             if (newCategories.length > 0) {
               const catPayload = newCategories.map(c => ({
                 id: c.id,
@@ -257,7 +259,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
                 is_default: false,
                 created_at: c.createdAt,
               }));
-              await supabase.from('categories').upsert(catPayload);
+              await safeUpsert('categories', catPayload);
             }
 
             // Upload transaksi baru
@@ -272,7 +274,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
                 payment_method: tx.paymentMethod || null,
                 created_at: tx.createdAt,
               }));
-              await supabase.from('transactions').upsert(txPayload);
+              await safeUpsert('transactions', txPayload);
             }
           } catch (e) {
             console.warn('Gagal mengunggah data hasil import:', e);

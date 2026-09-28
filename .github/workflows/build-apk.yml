@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+      - development-v2
     tags:
       - 'v*' # Memicu rilis otomatis saat push tag versi seperti v1.0.0
   workflow_dispatch: # Memungkinkan klik tombol "Run workflow" manual di GitHub Actions
@@ -36,8 +37,9 @@ jobs:
       - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Install Node Dependencies
         run: npm ci
@@ -67,8 +69,10 @@ jobs:
           # Salin APK Release (yang sudah ditandatangani)
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
             cp android/app/build/outputs/apk/release/app-release.apk "release-output/DuIt-Wallet-${SAFE_REF}.apk"
+            cp android/app/build/outputs/apk/release/app-release.apk "release-output/DuIt-Wallet-latest.apk"
           elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
             cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-output/DuIt-Wallet-${SAFE_REF}-unsigned.apk"
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-output/DuIt-Wallet-latest.apk"
           fi
 
           # Salin APK Debug untuk testing

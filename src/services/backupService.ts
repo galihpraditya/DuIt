@@ -58,6 +58,8 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
               const user = await authService.getCurrentUser();
               if (user?.id) {
                 try {
+                  const { safeUpsert } = await import('./syncService');
+
                   // Hapus data lama di cloud
                   await supabase.from('transactions').delete().eq('user_id', user.id);
                   await supabase.from('categories').delete().eq('user_id', user.id);
@@ -76,7 +78,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       is_default: c.isDefault || false,
                       created_at: c.createdAt,
                     }));
-                    await supabase.from('categories').upsert(payload);
+                    await safeUpsert('categories', payload);
                   }
                   if (data.transactions?.length) {
                     const payload = data.transactions.map((tx: any) => ({
@@ -90,7 +92,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       tags: tx.tags || null,
                       created_at: tx.createdAt,
                     }));
-                    await supabase.from('transactions').upsert(payload);
+                    await safeUpsert('transactions', payload);
                   }
                   if (data.budgets?.length) {
                     const payload = data.budgets.map((b: any) => ({
@@ -100,7 +102,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       amount: b.amount,
                       month: b.month,
                     }));
-                    await supabase.from('budgets').upsert(payload);
+                    await safeUpsert('budgets', payload);
                   }
                   if (data.recurringExpenses?.length) {
                     const payload = data.recurringExpenses.map((r: any) => ({
@@ -114,7 +116,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       is_active: r.isActive,
                       notes: r.notes || null,
                     }));
-                    await supabase.from('recurring_expenses').upsert(payload);
+                    await safeUpsert('recurring_expenses', payload);
                   }
                 } catch (e) {
                   console.warn('Gagal menimpa data backup ke cloud:', e);

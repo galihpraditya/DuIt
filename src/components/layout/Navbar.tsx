@@ -1,27 +1,59 @@
-import React from 'react';
-import { Wallet, Settings, Plus, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { Wallet, Settings, Plus, RefreshCw } from 'lucide-react';
 import type { Translations } from '../../constants/translations';
-import type { UserProfile } from '../../services/authService';
 
 interface NavbarProps {
   onOpenSettings: () => void;
   onOpenNewTransaction: () => void;
-  onOpenAuth: () => void;
-  currentUser: UserProfile | null;
   activeTab: string;
   onSelectTab: (tab: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   t: Translations;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
+export const Navbar: React.FC<NavbarProps> = memo(({
   onOpenSettings,
   onOpenNewTransaction,
-  onOpenAuth,
-  currentUser,
   activeTab,
   onSelectTab,
+  onRefresh,
+  isRefreshing = false,
   t,
 }) => {
+  const [isVisible, setIsVisible] = useState<boolean>(true);
+  const lastScrollYRef = useRef<number>(0);
+
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const diff = currentScrollY - lastScrollYRef.current;
+
+          // Always visible at or near the top
+          if (currentScrollY < 30) {
+            setIsVisible(true);
+          } else if (diff > 12 && currentScrollY > 70) {
+            // Scrolling down -> hide header on mobile
+            setIsVisible(false);
+          } else if (diff < -10) {
+            // Scrolling up -> show header
+            setIsVisible(true);
+          }
+
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const navItems = [
     { id: 'transactions', label: t.transactions },
     { id: 'analytics', label: t.analytics },
@@ -30,7 +62,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-30 pt-safe">
+    <header
+      className={`sticky top-0 z-30 pt-safe transition-all duration-300 ease-in-out ${
+        isVisible
+          ? 'translate-y-0 opacity-100'
+          : '-translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Floating Bar — efek kaca lewat border & shadow */}
         <div className="relative flex items-center justify-between h-14 sm:h-16 mt-3 px-3 sm:px-4 rounded-2xl glass-panel">
@@ -69,42 +107,46 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-2 sm:space-x-2.5">
-            {/* User Profile / Auth Button */}
-            <button
-              onClick={() => currentUser ? onOpenSettings() : onOpenAuth()}
-              className={`p-2.5 rounded-2xl border transition-all flex items-center justify-center space-x-2 active:scale-95 ${
-                currentUser 
-                  ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 shadow-sm' 
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm'
-              }`}
-              title={currentUser ? (currentUser.displayName || currentUser.email) : t.authSignIn}
-              aria-label={currentUser ? (currentUser.displayName || currentUser.email) : t.authSignIn}
-            >
-              {currentUser ? (
-                <div className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-extrabold">
-                  {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'U')}
-                </div>
-              ) : (
-                <User className="w-4 h-4" />
-              )}
-            </button>
+          {/* Action Buttons: Refresh, Sensor Nominal, Settings & Tambah Transaksi */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            {/* Refresh Button */}
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95 flex items-center justify-center group cursor-pointer disabled:opacity-70"
+                title={t.refreshData}
+                aria-label={t.refreshData}
+              >
+                <RefreshCw
+                  className={`w-4 h-4 transition-transform ${
+                    isRefreshing ? 'animate-spin text-emerald-600 dark:text-emerald-400' : 'group-hover:rotate-90 duration-300'
+                  }`}
+                />
+              </button>
+            )}
 
-            {/* Settings Button (Gear icon with tooltip) */}
+            {/* Settings Button (Gear icon with tooltip & active indicator) */}
             <button
               onClick={onOpenSettings}
-              className="p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95 flex items-center justify-center group"
+              className={`p-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 flex items-center justify-center group cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+              }`}
               title={`${t.settings} (S)`}
               aria-label={t.settings}
             >
-              <Settings className="w-4 h-4 text-slate-600 dark:text-slate-300 group-hover:rotate-45 transition-transform duration-300" />
+              <Settings className={`w-4 h-4 group-hover:rotate-45 transition-transform duration-300 ${
+                activeTab === 'settings' ? 'text-emerald-600 dark:text-emerald-400 rotate-45' : 'text-slate-600 dark:text-slate-300'
+              }`} />
             </button>
 
             {/* Primary Action Button (Tambah Pengeluaran) */}
             <button
               onClick={onOpenNewTransaction}
-              className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors active:scale-[0.98]"
+              className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors active:scale-[0.98] cursor-pointer"
               title={`${t.recordNew} (N)`}
             >
               <Plus className="w-4 h-4 stroke-[3]" />
@@ -116,4 +158,4 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
     </header>
   );
-};
+});

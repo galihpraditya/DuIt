@@ -147,10 +147,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   Tautan konfirmasi telah dikirim ke <strong className="text-emerald-600 dark:text-emerald-400">{registeredEmailPending}</strong>. Silakan periksa inbox/spam email Anda untuk aktivasi akun.
                 </p>
               </div>
-              
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[11px] text-amber-700 dark:text-amber-300 text-left">
-                <strong>Tips:</strong> Jika Anda ingin bisa login instan tanpa konfirmasi email, matikan opsi <em>"Confirm email"</em> di Dashboard Supabase (<strong>Authentication &gt; Providers &gt; Email</strong>).
-              </div>
 
               <button
                 type="button"

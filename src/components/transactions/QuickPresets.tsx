@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
-import { Zap, Sparkles } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { formatIDR } from '../../utils/formatters';
 import type { Category, Transaction } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
@@ -20,14 +20,18 @@ interface QuickPresetsProps {
   categories: Category[];
   transactions?: Transaction[];
   onSelectPreset: (preset: QuickPresetItem) => void;
+  hideNominals?: boolean;
   lang?: Language;
   t: Translations;
 }
 
-export const QuickPresets: React.FC<QuickPresetsProps> = ({
+const EMPTY_TXS: Transaction[] = [];
+
+export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
   categories,
   transactions: fallbackTransactions,
   onSelectPreset,
+  hideNominals = false,
   lang = 'id',
   t,
 }) => {
@@ -37,7 +41,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
     []
   );
 
-  const transactions = recentTransactions !== undefined ? recentTransactions : fallbackTransactions || [];
+  const transactions = recentTransactions ?? fallbackTransactions ?? EMPTY_TXS;
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
@@ -146,22 +150,11 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
 
   if (presets.length === 0) return null;
 
-  const hasHabits = presets.some((p) => p.isHabit);
-
   return (
     <div className="flex items-center space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
       <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400 pl-1 shrink-0">
-        {hasHabits ? (
-          <>
-            <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-500" />
-            <span>{lang === 'en' ? 'Recommended:' : 'Rekomendasi:'}</span>
-          </>
-        ) : (
-          <>
-            <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
-            <span>{t.shortcuts}</span>
-          </>
-        )}
+        <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
+        <span>{t.shortcuts}</span>
       </div>
       {presets.map((preset, index) => {
         const cat = categoryMap.get(preset.categoryId);
@@ -184,11 +177,11 @@ export const QuickPresets: React.FC<QuickPresetsProps> = ({
               {preset.label}
             </span>
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-              {formatIDR(preset.amount, true, lang)}
+              {formatIDR(preset.amount, true, lang, hideNominals)}
             </span>
           </button>
         );
       })}
     </div>
   );
-};
+});

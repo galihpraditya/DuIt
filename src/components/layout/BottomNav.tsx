@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   ReceiptText,
   PieChart,
@@ -15,7 +15,7 @@ interface BottomNavProps {
   t: Translations;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({
+export const BottomNav: React.FC<BottomNavProps> = memo(({
   activeTab,
   onSelectTab,
   onOpenNewTransaction,
@@ -75,4 +75,4 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       </div>
     </nav>
   );
-};
+});

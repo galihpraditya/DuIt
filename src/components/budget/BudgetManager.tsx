@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
-import { Target, AlertTriangle, CheckCircle2, Edit2, Calendar, Sparkles } from 'lucide-react';
+import { Target, AlertTriangle, CheckCircle2, Edit2, Calendar, ShieldCheck } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR, getRemainingDaysInCurrentMonth } from '../../utils/formatters';
@@ -103,10 +103,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
             <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
               <Target className="w-6 h-6 stroke-[2.5]" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">{t.budgetHeaderTitle}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t.budgetHeaderDesc}</p>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">{t.budgetHeaderTitle}</h2>
           </div>
           <div className="sm:text-right">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wide block">{t.totalSpentThisMonth}</span>
@@ -155,7 +152,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
         {totalBudget > 0 && (
           <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-300 font-medium">
-              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>
                 <strong className="text-slate-800 dark:text-slate-100">{t.safeDailyAllowanceTitle}</strong> {t.safeDailyAllowanceDesc}{' '}
                 <span className="font-bold text-emerald-600 dark:text-emerald-400 ml-1">

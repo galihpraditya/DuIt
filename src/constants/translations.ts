@@ -123,6 +123,21 @@ export interface Translations {
   errorCategoryName: string;
   budgetLimitPerMonth: string;
 
+  // Category Sort & Reorder
+  categorySortBy: string;
+  sortModeManual: string;
+  sortModeMostUsed: string;
+  sortModeHighestAmount: string;
+  sortModeNameAsc: string;
+  sortModeNameDesc: string;
+  sortModeNewest: string;
+  applyAsManualOrder: string;
+  applyAsManualTooltip: string;
+  moveUp: string;
+  moveDown: string;
+  categoryOrderUpdated: string;
+  orderRankBadge: string;
+
   // Analytics View
   analyticsHeaderTitle: string;
   activePeriodLabel: string;
@@ -144,6 +159,8 @@ export interface Translations {
   kpiFrequency: string;
   kpiTimes: string;
   kpiFreqDesc: string;
+  kpiToday: string;
+  kpiTodayDesc: string;
   trendChartTitle: string;
   trendChartDesc: string;
   chartBar: string;
@@ -154,13 +171,85 @@ export interface Translations {
   noDataPeriod: string;
   noRankingData: string;
 
+  // Safe-to-Spend & Forecast
+  safeToSpendTitle: string;
+  safeToSpendDesc: string;
+  safeDailyLimitLabel: string;
+  remainingBudgetLabel: string;
+  projectedTotalLabel: string;
+  statusHealthy: string;
+  statusWarning: string;
+  statusCritical: string;
+  statusNoBudget: string;
+  setBudgetPrompt: string;
+  btnSetBudget: string;
+  pacingAhead: string;
+  pacingBehind: string;
+  pacingExact: string;
+  daysPassedLabel: string;
+  daysRemainingLabel: string;
+  budgetUsedLabel: string;
+  pastPeriodRecapTitle: string;
+  pastPeriodRecapDesc: string;
+  recapSurplus: string;
+  recapDeficit: string;
+  adviceHealthy: string;
+  adviceWarning: string;
+  adviceCritical: string;
+  topBurnerLabel: string;
+  avgReferenceLineLabel: string;
+  categoryBudgetLimitUsed: string;
+  categoryOverbudgetBadge: string;
+  adviceLabel: string;
+  timeElapsedLegend: string;
+
   // Settings Modal
   settingsTitle: string;
   settingsDesc: string;
+  appearanceAndLanguage: string;
   languageSection: string;
   themeSection: string;
+  themeModeTitle: string;
   lightMode: string;
   darkMode: string;
+  systemMode: string;
+  surfaceMoodTitle: string;
+  surfaceDefault: string;
+  surfaceDefaultDesc: string;
+  surfaceOled: string;
+  surfaceOledDesc: string;
+  surfaceWarm: string;
+  surfaceWarmDesc: string;
+  accentColorTitle: string;
+  customColorLabel: string;
+  hexCodeLabel: string;
+  colorEmerald: string;
+  colorBlue: string;
+  colorPurple: string;
+  colorAmber: string;
+  colorRose: string;
+  colorTeal: string;
+  colorIndigo: string;
+  radiusTitle: string;
+  radiusRounded: string;
+  radiusCrisp: string;
+  fontTitle: string;
+  fontSubtitle: string;
+  fontJakarta: string;
+  fontJakartaDesc: string;
+  fontNunito: string;
+  fontNunitoDesc: string;
+  fontLora: string;
+  fontLoraDesc: string;
+  fontInter: string;
+  fontInterDesc: string;
+  fontOutfit: string;
+  fontOutfitDesc: string;
+  previewTitle: string;
+  previewBalanceLabel: string;
+  previewCategoryFood: string;
+  resetThemeBtn: string;
+  themeResetSuccess: string;
   dataManagementSection: string;
   dataManagementDesc: string;
   openExcelCenter: string;
@@ -171,6 +260,47 @@ export interface Translations {
   resetConfirmMsg: string;
   resetConfirmBtn: string;
   versionLabel: string;
+  installAppBannerSubtitle: string;
+  installPwaBtn: string;
+  downloadApkBtn: string;
+  downloadApkNativeTitle: string;
+  downloadApkNativeDesc: string;
+  // Daily Reminder Settings
+  reminderSection: string;
+  reminderDesc: string;
+  reminderEnable: string;
+  reminderTime: string;
+  reminderTestBtn: string;
+  reminderTestSuccess: string;
+  reminderPermissionDenied: string;
+  reminderActiveBadge: string;
+  reminderInactiveBadge: string;
+  reminderNotificationTitle: string;
+  reminderNotificationBody: string;
+  // Groq AI Settings & Smart Input
+  aiSection: string;
+  aiDesc: string;
+  aiApiKeyLabel: string;
+  aiApiKeyPlaceholder: string;
+  aiSaveKeyBtn: string;
+  aiRemoveKeyBtn: string;
+  aiStatusActive: string;
+  aiStatusInactive: string;
+  aiTestKeyBtn: string;
+  aiTestSuccess: string;
+  aiTestFailed: string;
+  aiGetKeyHelp: string;
+  aiInputPlaceholder: string;
+  aiInputButton: string;
+  aiListening: string;
+  aiProcessing: string;
+  aiSpeechError: string;
+  aiParseError: string;
+  aiParseSuccess: string;
+  batchReviewTitle: string;
+  batchReviewDesc: string;
+  saveAllBatchBtn: string;
+  cancelBatchBtn: string;
   // Auth
   authSignIn: string;
   authSignUp: string;
@@ -233,6 +363,54 @@ export interface Translations {
   backupRestoreBtn: string;
   backupSuccessMsg: string;
   backupFailedMsg: string;
+
+  // Shortcut & Date Actions
+  addTransactionOnThisDate: string;
+
+  // Category Details & Batch Move
+  categoryDetails: string;
+  categoryTransactions: string;
+  categoryNoTransactions: string;
+  moveCategory: string;
+  selectDestinationCategory: string;
+  selectedCount: string;
+  batchMoveSuccess: string;
+  selectAll: string;
+  deselectAll: string;
+  batchMoveConfirmTitle: string;
+  batchMoveConfirmMsg: string;
+  searchCategoryTxPlaceholder: string;
+  currentCategoryBadge: string;
+  destinationCategoryLabel: string;
+  confirmMoveBtn: string;
+
+  // Settings Page
+  backToTransactions: string;
+  keyboardShortcuts: string;
+  shortcutNewTx: string;
+  shortcutSettings: string;
+  shortcutSearch: string;
+  localDataSummary: string;
+  totalRecordsCount: string;
+  databaseStatus: string;
+  statusConnected: string;
+  statusLocalOnly: string;
+
+  // Privacy & Sensor Nominal
+  hideNominal: string;
+  showNominal: string;
+  nominalHidden: string;
+  nominalVisible: string;
+
+  // Refresh & Sync
+  refreshData: string;
+  refreshing: string;
+  dataRefreshed: string;
+  cloudSyncSuccess: string;
+  cloudSyncFailed: string;
+
+  // Mobile Navigation
+  back: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -291,8 +469,8 @@ export const translations: Record<Language, Translations> = {
     // Transaction Modal
     modalNewTitle: 'Catat Pengeluaran Baru',
     modalEditTitle: 'Edit Pengeluaran',
-    modalNewDesc: 'Catat pengeluaran harian Anda dengan cepat',
-    modalEditDesc: 'Perbarui data catatan pengeluaran',
+    modalNewDesc: '',
+    modalEditDesc: '',
     amountLabel: 'Nominal Pengeluaran',
     mathActive: 'Kalkulator Aktif',
     computedTotal: 'Total Terhitung:',
@@ -301,7 +479,7 @@ export const translations: Record<Language, Translations> = {
     dateTimeLabel: 'Tanggal & Waktu',
     paymentMethodLabel: 'Metode Pembayaran',
     notesLabel: 'Catatan / Keterangan (Opsional)',
-    notesPlaceholder: 'Contoh: Makan siang Nasi Padang...',
+    notesPlaceholder: 'Contoh: Makan siang, Kopi susu, Bensin motor, Belanja bulanan',
     detailSectionLabel: 'Detail',
     todayQuickLabel: 'Hari Ini',
     yesterdayQuickLabel: 'Kemarin',
@@ -322,7 +500,7 @@ export const translations: Record<Language, Translations> = {
 
     // Budget Manager
     budgetHeaderTitle: 'Anggaran & Limit Bulanan',
-    budgetHeaderDesc: 'Pantau batas maksimal dan ritme pengeluaran',
+    budgetHeaderDesc: '',
     totalSpentThisMonth: 'Total Terpakai Bulan Ini:',
     spentOfTarget: 'terpakai dari ',
     remaining: 'Sisa',
@@ -342,7 +520,7 @@ export const translations: Record<Language, Translations> = {
 
     // Category Manager
     categoryHeaderTitle: 'Kategori Pengeluaran',
-    categoryHeaderDesc: 'Sesuaikan jenis pengeluaran dengan warna dan ikon pilihan Anda',
+    categoryHeaderDesc: '',
     newCategoryBtn: 'Tambah',
     editCategoryTitle: 'Edit Kategori',
     newCategoryModalTitle: 'Tambah Kategori Baru',
@@ -359,6 +537,21 @@ export const translations: Record<Language, Translations> = {
     errorCategoryName: 'Nama kategori tidak boleh kosong.',
     budgetLimitPerMonth: 'Batas Anggaran:',
 
+    // Category Sort & Reorder
+    categorySortBy: 'Urutkan:',
+    sortModeManual: 'Urutan Kustom (Manual)',
+    sortModeMostUsed: 'Paling Sering Digunakan (Cerdas)',
+    sortModeHighestAmount: 'Pengeluaran Terbesar',
+    sortModeNameAsc: 'Nama (A - Z)',
+    sortModeNameDesc: 'Nama (Z - A)',
+    sortModeNewest: 'Kategori Terbaru',
+    applyAsManualOrder: 'Simpan susunan ini ke Urutan Manual',
+    applyAsManualTooltip: 'Kunci susunan otomatis saat ini menjadi susunan manual agar tetap bisa Anda sesuaikan',
+    moveUp: 'Pindah ke atas',
+    moveDown: 'Pindah ke bawah',
+    categoryOrderUpdated: 'Urutan kategori berhasil disimpan!',
+    orderRankBadge: 'Urutan',
+
     // Analytics View
     analyticsHeaderTitle: 'Analisis & Grafik Pengeluaran',
     activePeriodLabel: 'Periode aktif:',
@@ -374,31 +567,105 @@ export const translations: Record<Language, Translations> = {
     kpiTotalExpense: 'Total Pengeluaran',
     kpiVsPrevious: 'vs periode lalu',
     kpiDailyAverage: 'Rata-rata Harian',
-    kpiDailyAvgDesc: 'Perkiraan pengeluaran / hari',
+    kpiDailyAvgDesc: '',
     kpiHighestExpense: 'Pengeluaran Terbesar',
-    kpiHighestExpenseDesc: 'Dalam satu transaksi tunggal',
+    kpiHighestExpenseDesc: '',
     kpiFrequency: 'Frekuensi Belanja',
     kpiTimes: 'kali',
-    kpiFreqDesc: 'Total catatan transaksi',
-    trendChartTitle: 'Tren Pengeluaran Waktu',
-    trendChartDesc: 'Grafik naik-turun pengeluaran harian/bulanan',
+    kpiFreqDesc: '',
+    kpiToday: 'Hari Ini',
+    kpiTodayDesc: '',
+    trendChartTitle: 'Tren Pengeluaran',
+    trendChartDesc: '',
     chartBar: 'Batang',
     chartArea: 'Area',
     categoryDistTitle: 'Distribusi Kategori',
-    categoryDistDesc: 'Proporsi pengeluaran berdasarkan jenis kategori',
-    rankingTitle: 'Peringkat Pengeluaran Kategori Terbanyak',
+    categoryDistDesc: '',
+    rankingTitle: 'Peringkat Kategori',
     noDataPeriod: 'Tidak ada data pada rentang waktu ini',
     noRankingData: 'Tidak ada data untuk ditampilkan.',
 
+    // Safe-to-Spend & Forecast
+    safeToSpendTitle: 'Batas Belanja Aman & Proyeksi',
+    safeToSpendDesc: 'Panduan batas harian agar pengeluaran tidak melampaui anggaran bulan ini',
+    safeDailyLimitLabel: 'Batas Harian Aman',
+    remainingBudgetLabel: 'Sisa Anggaran',
+    projectedTotalLabel: 'Proyeksi Akhir Bulan',
+    statusHealthy: 'Laju Aman',
+    statusWarning: 'Perlu Waspada',
+    statusCritical: 'Risiko Overbudget',
+    statusNoBudget: 'Belum Ada Anggaran',
+    setBudgetPrompt: 'Atur limit anggaran kategori untuk mengaktifkan Safe-to-Spend & Proyeksi.',
+    btnSetBudget: 'Atur Anggaran',
+    pacingAhead: 'Laju belanja melebihi laju hari',
+    pacingBehind: 'Laju pengeluaran masih terkendali',
+    pacingExact: 'Laju belanja seimbang dengan waktu',
+    daysPassedLabel: 'Hari Berjalan',
+    daysRemainingLabel: 'Hari Tersisa',
+    budgetUsedLabel: 'Anggaran Terpakai',
+    pastPeriodRecapTitle: 'Rekapitulasi Anggaran Periode Ini',
+    pastPeriodRecapDesc: 'Perbandingan realisasi pengeluaran dengan target anggaran kategori',
+    recapSurplus: 'Surplus Hemat',
+    recapDeficit: 'Melebihi Target',
+    adviceHealthy: 'Pengeluaran masih dalam batas aman dengan alokasi harian yang terjaga.',
+    adviceWarning: 'Laju belanja melebihi laju hari. Prioritaskan kebutuhan pokok agar alokasi harian tetap aman.',
+    adviceCritical: 'Proyeksi pengeluaran melampaui target anggaran. Tahan belanja non-pokok dan evaluasi batas kategori.',
+    topBurnerLabel: 'Penyerap Anggaran Terbesar',
+    avgReferenceLineLabel: 'Rata-rata',
+    categoryBudgetLimitUsed: 'terpakai dari limit',
+    categoryOverbudgetBadge: 'Melebihi Limit',
+    adviceLabel: 'Saran',
+    timeElapsedLegend: 'Waktu berjalan',
+
     // Settings Modal
     settingsTitle: 'Pengaturan',
-    settingsDesc: 'Kelola preferensi bahasa, tema, dan data aplikasi',
-    languageSection: 'Bahasa / Language',
-    themeSection: 'Tema Aplikasi',
+    settingsDesc: '',
+    appearanceAndLanguage: 'Preferensi Tampilan & Bahasa',
+    languageSection: 'Pilihan Bahasa',
+    themeSection: 'Tema & Tampilan',
+    themeModeTitle: 'Mode Tampilan',
     lightMode: 'Mode Terang',
     darkMode: 'Mode Gelap',
+    systemMode: 'Ikuti Sistem',
+    surfaceMoodTitle: 'Karakter Permukaan',
+    surfaceDefault: 'Standar Slate',
+    surfaceDefaultDesc: 'Bersih & seimbang',
+    surfaceOled: 'OLED Hitam Pekat',
+    surfaceOledDesc: 'Hitam murni (#000000) AMOLED',
+    surfaceWarm: 'Warm Sepia',
+    surfaceWarmDesc: 'Nuansa hangat ramah mata',
+    accentColorTitle: 'Warna Aksen Utama',
+    customColorLabel: 'Kustom',
+    hexCodeLabel: 'Kode Hex',
+    colorEmerald: 'Zamrud',
+    colorBlue: 'Biru',
+    colorPurple: 'Ungu',
+    colorAmber: 'Oranye',
+    colorRose: 'Mawar',
+    colorTeal: 'Toska',
+    colorIndigo: 'Indigo',
+    radiusTitle: 'Gaya Sudut',
+    radiusRounded: 'Bulat Lembut',
+    radiusCrisp: 'Tajam Ringkas',
+    fontTitle: 'Gaya Teks & Tipografi',
+    fontSubtitle: 'Pilih karakter huruf yang sesuai dengan selera visual Anda',
+    fontJakarta: 'Plus Jakarta Sans',
+    fontJakartaDesc: 'Modern & Geometris',
+    fontNunito: 'Nunito',
+    fontNunitoDesc: 'Soft & Ramah (Rounded)',
+    fontLora: 'Lora',
+    fontLoraDesc: 'Classic & Elegan (Serif)',
+    fontInter: 'Inter',
+    fontInterDesc: 'Netral & Fungsional',
+    fontOutfit: 'Outfit',
+    fontOutfitDesc: 'Stylish & Trendi',
+    previewTitle: 'Pratinjau Langsung',
+    previewBalanceLabel: 'Total Pengeluaran Bulan Ini',
+    previewCategoryFood: 'Makanan',
+    resetThemeBtn: 'Kembalikan Tema ke Default',
+    themeResetSuccess: 'Tema telah dikembalikan ke pengaturan default',
     dataManagementSection: 'Manajemen Data & Excel',
-    dataManagementDesc: 'Ekspor, impor file Excel, dan cadangan offline',
+    dataManagementDesc: '',
     openExcelCenter: 'Buka Pusat Data & Excel',
     dangerZoneSection: 'Zona Berbahaya',
     resetAllData: 'Reset Seluruh Data Aplikasi',
@@ -406,7 +673,50 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset Seluruh Data Aplikasi',
     resetConfirmMsg: 'Peringatan: Tindakan ini akan menghapus permanen semua catatan pengeluaran dan kategori Anda. Lanjutkan?',
     resetConfirmBtn: 'Reset Semua Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0',
+    versionLabel: 'DuIt Expense Tracker v2.0.0 • Offline-First PWA',
+    installAppBannerSubtitle: 'Pasang di HP Anda untuk akses offline instan & lebih cepat',
+    installPwaBtn: 'Pasang Cepat',
+    downloadApkBtn: 'Unduh APK',
+    downloadApkNativeTitle: 'Aplikasi Android Native (APK)',
+    downloadApkNativeDesc: 'Unduh file installer APK v2.0.0 langsung untuk dipasang mandiri di perangkat Android Anda.',
+
+    // Daily Reminder Settings
+    reminderSection: 'Pengingat Pengeluaran Harian',
+    reminderDesc: '',
+    reminderEnable: 'Aktifkan Pengingat Harian',
+    reminderTime: 'Waktu Pengingat',
+    reminderTestBtn: 'Uji Coba Notifikasi',
+    reminderTestSuccess: 'Notifikasi pengujian berhasil dikirim!',
+    reminderPermissionDenied: 'Izin notifikasi diblokir browser. Mohon izinkan notifikasi pada pengaturan browser Anda.',
+    reminderActiveBadge: 'Pengingat Aktif',
+    reminderInactiveBadge: 'Nonaktif',
+    reminderNotificationTitle: 'DuIt - Pengingat Harian',
+    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol! 💰',
+
+    // Groq AI Settings & Smart Input
+    aiSection: 'Input Cerdas',
+    aiDesc: '',
+    aiApiKeyLabel: 'API Key',
+    aiApiKeyPlaceholder: 'Tempel API Key di sini (gsk_...)',
+    aiSaveKeyBtn: 'Simpan Kunci',
+    aiRemoveKeyBtn: 'Hapus',
+    aiStatusActive: 'Aktif',
+    aiStatusInactive: 'Belum Dikonfigurasi',
+    aiTestKeyBtn: 'Uji Koneksi',
+    aiTestSuccess: 'Koneksi API berhasil! Siap digunakan.',
+    aiTestFailed: 'Gagal terhubung. Pastikan API Key valid.',
+    aiGetKeyHelp: 'Dapatkan Groq API Key di console.groq.com',
+    aiInputPlaceholder: 'Contoh: Kopi 25rb tunai, Makan siang 45rb qris, Belanja 120rb transfer...',
+    aiInputButton: 'Proses',
+    aiListening: 'Mendengarkan suara... Silakan bicara',
+    aiProcessing: 'Memproses...',
+    aiSpeechError: 'Gagal mengakses mikrofon atau pengenalan suara tidak didukung browser.',
+    aiParseError: 'Tidak dapat mendeteksi transaksi dari kalimat ini. Coba kalimat yang lebih spesifik.',
+    aiParseSuccess: 'Transaksi berhasil terdeteksi!',
+    batchReviewTitle: 'Tinjau Transaksi',
+    batchReviewDesc: 'Beberapa transaksi terdeteksi. Periksa dan simpan sekaligus.',
+    saveAllBatchBtn: 'Simpan Semua Transaksi',
+    cancelBatchBtn: 'Batal / Input Manual',
 
     // Auth
     authSignIn: 'Masuk Akun',
@@ -434,7 +744,7 @@ export const translations: Record<Language, Translations> = {
 
     // Excel & Backup Center
     excelCenterTitle: 'Pusat Data & Excel',
-    excelCenterDesc: 'Export, Import, dan Cadangan Offline',
+    excelCenterDesc: '',
     tabExportExcel: 'Export Excel',
     tabImportExcel: 'Import Excel',
     tabBackupRestore: 'Backup & Restore',
@@ -470,6 +780,54 @@ export const translations: Record<Language, Translations> = {
     backupRestoreBtn: 'Pulihkan Data (.json)',
     backupSuccessMsg: 'File cadangan (.json) berhasil diunduh!',
     backupFailedMsg: 'Gagal membuat cadangan.',
+
+    // Shortcut & Date Actions
+    addTransactionOnThisDate: 'Catat di tanggal ini',
+
+    // Category Details & Batch Move
+    categoryDetails: 'Detail Kategori',
+    categoryTransactions: 'Transaksi Kategori',
+    categoryNoTransactions: 'Belum ada transaksi di kategori ini.',
+    moveCategory: 'Pindahkan Kategori',
+    selectDestinationCategory: 'Pilih Kategori Tujuan',
+    selectedCount: 'transaksi dipilih',
+    batchMoveSuccess: '{count} transaksi berhasil dipindahkan ke kategori {name}!',
+    selectAll: 'Pilih Semua',
+    deselectAll: 'Batal Pilih Semua',
+    batchMoveConfirmTitle: 'Pindahkan Transaksi Terpilih',
+    batchMoveConfirmMsg: 'Pindahkan {count} transaksi terpilih ke kategori "{name}"?',
+    searchCategoryTxPlaceholder: 'Cari catatan atau nominal dalam kategori...',
+    currentCategoryBadge: 'Kategori Saat Ini',
+    destinationCategoryLabel: 'Pilih kategori baru untuk transaksi terpilih:',
+    confirmMoveBtn: 'Pindahkan Sekarang',
+
+    // Settings Page
+    backToTransactions: 'Kembali ke Transaksi',
+    keyboardShortcuts: 'Pintasan Keyboard',
+    shortcutNewTx: 'Tambah Transaksi Baru',
+    shortcutSettings: 'Buka Pengaturan',
+    shortcutSearch: 'Fokus Pencarian',
+    localDataSummary: 'Ringkasan Data Lokal',
+    totalRecordsCount: 'Total Catatan',
+    databaseStatus: 'Status Penyimpanan',
+    statusConnected: 'Tersinkronisasi',
+    statusLocalOnly: 'Penyimpanan Lokal',
+
+    // Privacy & Sensor Nominal
+    hideNominal: 'Sembunyikan nominal',
+    showNominal: 'Tampilkan nominal',
+    nominalHidden: 'Nominal disembunyikan',
+    nominalVisible: 'Nominal ditampilkan',
+
+    // Refresh & Sync
+    refreshData: 'Segarkan data',
+    refreshing: 'Menyegarkan...',
+    dataRefreshed: 'Data lokal berhasil disegarkan!',
+    cloudSyncSuccess: 'Data berhasil disinkronkan dengan cloud!',
+    cloudSyncFailed: 'Gagal menyinkronkan data.',
+
+    // Mobile Navigation
+    back: 'Kembali',
   },
   en: {
     appName: 'DuIt',
@@ -526,8 +884,8 @@ export const translations: Record<Language, Translations> = {
     // Transaction Modal
     modalNewTitle: 'Record New Expense',
     modalEditTitle: 'Edit Expense',
-    modalNewDesc: 'Record your daily spending quickly',
-    modalEditDesc: 'Update your expense record details',
+    modalNewDesc: '',
+    modalEditDesc: '',
     amountLabel: 'Expense Amount',
     mathActive: 'Calculator Active',
     computedTotal: 'Calculated Total:',
@@ -536,7 +894,7 @@ export const translations: Record<Language, Translations> = {
     dateTimeLabel: 'Date & Time',
     paymentMethodLabel: 'Payment Method',
     notesLabel: 'Notes / Description (Optional)',
-    notesPlaceholder: 'Example: Lunch Padang Rice...',
+    notesPlaceholder: 'Example: Lunch, Coffee, Fuel, Monthly groceries',
     detailSectionLabel: 'Details',
     todayQuickLabel: 'Today',
     yesterdayQuickLabel: 'Yesterday',
@@ -557,14 +915,14 @@ export const translations: Record<Language, Translations> = {
 
     // Budget Manager
     budgetHeaderTitle: 'Monthly Budget & Limits',
-    budgetHeaderDesc: 'Track your spending limits and monthly burn rate',
+    budgetHeaderDesc: '',
     totalSpentThisMonth: 'Total Spent This Month:',
     spentOfTarget: 'spent of',
     remaining: 'Remaining',
     overBy: 'Over by',
     noLimitSet: 'No limit set',
     safeDailyAllowanceTitle: 'Safe Daily Allowance:',
-    safeDailyAllowanceDesc: 'You can safely spend up to',
+    safeDailyAllowanceDesc: '',
     daysRemainingInMonth: 'days until month end',
     setBudgetLimit: '+ Set Limit',
     maxLimitPerMonth: 'Max Monthly Limit (IDR / Month):',
@@ -577,7 +935,7 @@ export const translations: Record<Language, Translations> = {
 
     // Category Manager
     categoryHeaderTitle: 'Expense Categories',
-    categoryHeaderDesc: 'Customize your spending categories with icons and color themes',
+    categoryHeaderDesc: '',
     newCategoryBtn: 'New Category',
     editCategoryTitle: 'Edit Category',
     newCategoryModalTitle: 'Add New Category',
@@ -594,6 +952,21 @@ export const translations: Record<Language, Translations> = {
     errorCategoryName: 'Category name cannot be empty.',
     budgetLimitPerMonth: 'Budget Limit:',
 
+    // Category Sort & Reorder
+    categorySortBy: 'Sort by:',
+    sortModeManual: 'Custom Order (Manual)',
+    sortModeMostUsed: 'Most Frequently Used (Smart)',
+    sortModeHighestAmount: 'Highest Spending',
+    sortModeNameAsc: 'Name (A - Z)',
+    sortModeNameDesc: 'Name (Z - A)',
+    sortModeNewest: 'Newest Created',
+    applyAsManualOrder: 'Lock current as Manual Order',
+    applyAsManualTooltip: 'Save this automatic arrangement as your custom manual order so you can fine-tune it',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    categoryOrderUpdated: 'Category order saved successfully!',
+    orderRankBadge: 'Rank',
+
     // Analytics View
     analyticsHeaderTitle: 'Financial Analytics & Charts',
     activePeriodLabel: 'Active period:',
@@ -609,31 +982,105 @@ export const translations: Record<Language, Translations> = {
     kpiTotalExpense: 'Total Expenses',
     kpiVsPrevious: 'vs previous period',
     kpiDailyAverage: 'Daily Average',
-    kpiDailyAvgDesc: 'Estimated expense / day',
+    kpiDailyAvgDesc: '',
     kpiHighestExpense: 'Highest Single Expense',
-    kpiHighestExpenseDesc: 'In a single transaction',
+    kpiHighestExpenseDesc: '',
     kpiFrequency: 'Spending Frequency',
     kpiTimes: 'times',
-    kpiFreqDesc: 'Total transaction count',
-    trendChartTitle: 'Spending Trend Over Time',
-    trendChartDesc: 'Daily and monthly expenditure trend',
+    kpiFreqDesc: '',
+    kpiToday: 'Today',
+    kpiTodayDesc: '',
+    trendChartTitle: 'Spending Trend',
+    trendChartDesc: '',
     chartBar: 'Bar',
     chartArea: 'Area',
     categoryDistTitle: 'Category Breakdown',
-    categoryDistDesc: 'Spending proportion by category',
-    rankingTitle: 'Top Spending Categories Ranking',
+    categoryDistDesc: '',
+    rankingTitle: 'Category Ranking',
     noDataPeriod: 'No transaction data in this timeframe',
     noRankingData: 'No data to display.',
 
+    // Safe-to-Spend & Forecast
+    safeToSpendTitle: 'Safe-to-Spend & Forecast',
+    safeToSpendDesc: 'Daily spending guide to stay within your monthly budget targets',
+    safeDailyLimitLabel: 'Daily Safe Limit',
+    remainingBudgetLabel: 'Remaining Budget',
+    projectedTotalLabel: 'Month-End Forecast',
+    statusHealthy: 'On Track',
+    statusWarning: 'Pacing High',
+    statusCritical: 'Overbudget Risk',
+    statusNoBudget: 'No Budget Set',
+    setBudgetPrompt: 'Set category budget limits to enable Safe-to-Spend & Forecast.',
+    btnSetBudget: 'Set Budget',
+    pacingAhead: 'Spending is outpacing the days',
+    pacingBehind: 'Spending pace is well controlled',
+    pacingExact: 'Spending is in sync with time',
+    daysPassedLabel: 'Days Elapsed',
+    daysRemainingLabel: 'Days Left',
+    budgetUsedLabel: 'Budget Used',
+    pastPeriodRecapTitle: 'Period Budget Recap',
+    pastPeriodRecapDesc: 'Comparison of actual spending against target category budgets',
+    recapSurplus: 'Budget Surplus',
+    recapDeficit: 'Over Target',
+    adviceHealthy: 'Spending is within safe limits with a steady daily allowance.',
+    adviceWarning: 'Spending is outpacing the calendar. Prioritize essentials to keep your daily limit on track.',
+    adviceCritical: 'Projected spending will exceed your monthly budget. Pause non-essential purchases and review category limits.',
+    topBurnerLabel: 'Top Burner Category',
+    avgReferenceLineLabel: 'Average',
+    categoryBudgetLimitUsed: 'used of limit',
+    categoryOverbudgetBadge: 'Over Limit',
+    adviceLabel: 'Recommendation',
+    timeElapsedLegend: 'Time elapsed',
+
     // Settings Modal
     settingsTitle: 'Settings',
-    settingsDesc: 'Manage language, theme, and data preferences',
-    languageSection: 'Language / Bahasa',
-    themeSection: 'App Theme',
+    settingsDesc: '',
+    appearanceAndLanguage: 'Appearance & Language',
+    languageSection: 'Language',
+    themeSection: 'Theme & Appearance',
+    themeModeTitle: 'Display Mode',
     lightMode: 'Light Mode',
     darkMode: 'Dark Mode',
+    systemMode: 'Follow System',
+    surfaceMoodTitle: 'Surface Mood',
+    surfaceDefault: 'Default Slate',
+    surfaceDefaultDesc: 'Clean & balanced',
+    surfaceOled: 'Pure OLED Black',
+    surfaceOledDesc: 'Pure AMOLED black (#000000)',
+    surfaceWarm: 'Warm Sepia',
+    surfaceWarmDesc: 'Cozy tone, easy on eyes',
+    accentColorTitle: 'Accent Color',
+    customColorLabel: 'Custom',
+    hexCodeLabel: 'Hex Code',
+    colorEmerald: 'Emerald',
+    colorBlue: 'Blue',
+    colorPurple: 'Violet',
+    colorAmber: 'Amber',
+    colorRose: 'Rose',
+    colorTeal: 'Teal',
+    colorIndigo: 'Indigo',
+    radiusTitle: 'Corner Style',
+    radiusRounded: 'Rounded Modern',
+    radiusCrisp: 'Crisp Compact',
+    fontTitle: 'Typography & Font Style',
+    fontSubtitle: 'Choose the font character that best fits your visual taste',
+    fontJakarta: 'Plus Jakarta Sans',
+    fontJakartaDesc: 'Modern & Clean',
+    fontNunito: 'Nunito',
+    fontNunitoDesc: 'Soft & Friendly (Rounded)',
+    fontLora: 'Lora',
+    fontLoraDesc: 'Classic & Editorial (Serif)',
+    fontInter: 'Inter',
+    fontInterDesc: 'Neutral & Functional',
+    fontOutfit: 'Outfit',
+    fontOutfitDesc: 'Stylish & Display',
+    previewTitle: 'Live Preview',
+    previewBalanceLabel: 'Total Spent This Month',
+    previewCategoryFood: 'Food',
+    resetThemeBtn: 'Reset Theme to Default',
+    themeResetSuccess: 'Theme has been reset to defaults',
     dataManagementSection: 'Data & Excel Center',
-    dataManagementDesc: 'Export, import Excel files, and local backup',
+    dataManagementDesc: '',
     openExcelCenter: 'Open Data & Excel Center',
     dangerZoneSection: 'Danger Zone',
     resetAllData: 'Reset All Application Data',
@@ -641,7 +1088,50 @@ export const translations: Record<Language, Translations> = {
     resetConfirmTitle: 'Reset All Application Data',
     resetConfirmMsg: 'Warning: This will permanently wipe all your expense records and categories. Proceed?',
     resetConfirmBtn: 'Reset All Data',
-    versionLabel: 'DuIt Expense Tracker v1.2.0 â€¢ Offline-First PWA',
+    versionLabel: 'DuIt Expense Tracker v2.0.0 • Offline-First PWA',
+    installAppBannerSubtitle: 'Install on your phone for instant offline access & speed',
+    installPwaBtn: 'Quick Install',
+    downloadApkBtn: 'Download APK',
+    downloadApkNativeTitle: 'Native Android App (APK)',
+    downloadApkNativeDesc: 'Download the v2.0.0 APK installer directly for standalone installation on your Android device.',
+
+    // Daily Reminder Settings
+    reminderSection: 'Daily Expense Reminder',
+    reminderDesc: '',
+    reminderEnable: 'Enable Daily Reminder',
+    reminderTime: 'Reminder Time',
+    reminderTestBtn: 'Test Notification',
+    reminderTestSuccess: 'Test notification sent successfully!',
+    reminderPermissionDenied: 'Notification permission was denied. Please allow notifications in browser settings.',
+    reminderActiveBadge: 'Reminder Active',
+    reminderInactiveBadge: 'Disabled',
+    reminderNotificationTitle: 'DuIt - Daily Reminder',
+    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget! 💰",
+
+    // Groq AI Settings & Smart Input
+    aiSection: 'Smart Input',
+    aiDesc: '',
+    aiApiKeyLabel: 'API Key',
+    aiApiKeyPlaceholder: 'Paste API Key here (gsk_...)',
+    aiSaveKeyBtn: 'Save Key',
+    aiRemoveKeyBtn: 'Remove',
+    aiStatusActive: 'Active',
+    aiStatusInactive: 'Not Configured',
+    aiTestKeyBtn: 'Test Connection',
+    aiTestSuccess: 'API connection successful! Ready to use.',
+    aiTestFailed: 'Connection failed. Please check your API Key.',
+    aiGetKeyHelp: 'Get a free Groq API Key at console.groq.com',
+    aiInputPlaceholder: 'Example: Coffee 25k cash, Lunch 45k card, Groceries 120k transfer...',
+    aiInputButton: 'Process',
+    aiListening: 'Listening... Speak now',
+    aiProcessing: 'Processing...',
+    aiSpeechError: 'Microphone access failed or speech recognition is not supported.',
+    aiParseError: 'Could not detect any transactions. Try a clearer description.',
+    aiParseSuccess: 'Transactions detected!',
+    batchReviewTitle: 'Review Transactions',
+    batchReviewDesc: 'Multiple expenses detected. Review and save all at once.',
+    saveAllBatchBtn: 'Save All Transactions',
+    cancelBatchBtn: 'Cancel / Manual Form',
 
     // Auth
     authSignIn: 'Sign In',
@@ -669,7 +1159,7 @@ export const translations: Record<Language, Translations> = {
 
     // Excel & Backup Center
     excelCenterTitle: 'Data & Excel Center',
-    excelCenterDesc: 'Export, Import, and Offline Backup',
+    excelCenterDesc: '',
     tabExportExcel: 'Export Excel',
     tabImportExcel: 'Import Excel',
     tabBackupRestore: 'Backup & Restore',
@@ -705,6 +1195,53 @@ export const translations: Record<Language, Translations> = {
     backupRestoreBtn: 'Restore Data (.json)',
     backupSuccessMsg: 'Backup file (.json) downloaded successfully!',
     backupFailedMsg: 'Failed to generate backup.',
+    // Shortcut & Date Actions
+    addTransactionOnThisDate: 'Record on this date',
+
+    // Category Details & Batch Move
+    categoryDetails: 'Category Details',
+    categoryTransactions: 'Category Transactions',
+    categoryNoTransactions: 'No transactions in this category yet.',
+    moveCategory: 'Move Category',
+    selectDestinationCategory: 'Select Destination Category',
+    selectedCount: 'transactions selected',
+    batchMoveSuccess: '{count} transactions successfully moved to {name}!',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
+    batchMoveConfirmTitle: 'Move Selected Transactions',
+    batchMoveConfirmMsg: 'Move {count} selected transactions to category "{name}"?',
+    searchCategoryTxPlaceholder: 'Search notes or amount in this category...',
+    currentCategoryBadge: 'Current Category',
+    destinationCategoryLabel: 'Select new category for selected transactions:',
+    confirmMoveBtn: 'Move Now',
+
+    // Settings Page
+    backToTransactions: 'Back to Transactions',
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    shortcutNewTx: 'New Transaction',
+    shortcutSettings: 'Open Settings',
+    shortcutSearch: 'Focus Search',
+    localDataSummary: 'Local Data Summary',
+    totalRecordsCount: 'Total Records',
+    databaseStatus: 'Storage Status',
+    statusConnected: 'Synchronized',
+    statusLocalOnly: 'Local Storage',
+
+    // Privacy & Sensor Nominal
+    hideNominal: 'Hide amounts',
+    showNominal: 'Show amounts',
+    nominalHidden: 'Amounts hidden',
+    nominalVisible: 'Amounts visible',
+
+    // Refresh & Sync
+    refreshData: 'Refresh data',
+    refreshing: 'Refreshing...',
+    dataRefreshed: 'Local data refreshed!',
+    cloudSyncSuccess: 'Data synchronized with cloud!',
+    cloudSyncFailed: 'Failed to sync data.',
+
+    // Mobile Navigation
+    back: 'Back',
   },
 };
 
