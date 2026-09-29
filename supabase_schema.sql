@@ -11,17 +11,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Menghilangkan error duplicate key / RLS violation saat multi-user / guest login
 -- ------------------------------------------------------------------------------
 DO $$
+DECLARE
+  r RECORD;
 BEGIN
-  -- Hapus foreign key legacy jika ada
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'transactions_category_id_fkey') THEN
-    ALTER TABLE public.transactions DROP CONSTRAINT transactions_category_id_fkey;
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'recurring_expenses_category_id_fkey') THEN
-    ALTER TABLE public.recurring_expenses DROP CONSTRAINT recurring_expenses_category_id_fkey;
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'budgets_category_id_fkey') THEN
-    ALTER TABLE public.budgets DROP CONSTRAINT budgets_category_id_fkey;
-  END IF;
+  -- Hapus seluruh foreign key legacy secara dinamis (tanpa bergantung pada nama constraint tertentu)
+  FOR r IN (
+    SELECT tc.table_name, tc.constraint_name
+    FROM information_schema.table_constraints tc
+    WHERE tc.table_schema = 'public'
+      AND tc.table_name IN ('transactions', 'recurring_expenses', 'budgets')
+      AND tc.constraint_type = 'FOREIGN KEY'
+  ) LOOP
+    EXECUTE 'ALTER TABLE public.' || quote_ident(r.table_name) || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(r.constraint_name) || ' CASCADE;';
+  END LOOP;
 
   -- Ubah primary key categories menjadi composite (id, user_id)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories' AND table_schema = 'public') THEN

@@ -1,6 +1,6 @@
 # DuIt - Smart Expense Tracker & Financial Analytics
 
-[![Version](https://img.shields.io/badge/version-2.0.0-emerald.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.1-emerald.svg)](package.json)
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF.svg)](https://capacitorjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com/)

@@ -698,25 +698,40 @@ export function App() {
       fallbackCatId = defaultOthers.id;
     }
 
-    // Re-route related transactions
+    // 1. Re-route related transactions locally in Dexie
     const relatedTxs = await db.transactions.where('categoryId').equals(id).toArray();
     for (const tx of relatedTxs) {
       await db.transactions.update(tx.id, { categoryId: fallbackCatId });
     }
 
-    // Re-route related recurring expenses
+    // 2. Re-route related recurring expenses locally in Dexie
     const relatedRecurring = await db.recurringExpenses.where('categoryId').equals(id).toArray();
     for (const rec of relatedRecurring) {
       await db.recurringExpenses.update(rec.id, { categoryId: fallbackCatId });
     }
 
-    // Delete category budget entries
+    // 3. Delete category budget entries locally in Dexie
     await db.budgets.where('categoryId').equals(id).delete();
 
-    await db.categories.delete(id);
+    // 4. Sync re-routed data to cloud BEFORE deleting category to prevent FK violation & orphaned rows
     if (currentUser?.id) {
-      syncService.deleteCategory(id, currentUser.id);
+      const updatedTxs = await db.transactions.where('id').anyOf(relatedTxs.map((t) => t.id)).toArray();
+      for (const tx of updatedTxs) {
+        await syncService.pushTransaction(tx, currentUser.id);
+      }
+      const updatedRecurring = await db.recurringExpenses.where('id').anyOf(relatedRecurring.map((r) => r.id)).toArray();
+      for (const rec of updatedRecurring) {
+        await syncService.pushRecurringExpense(rec, currentUser.id);
+      }
+      await syncService.deleteBudgetByCategory(id, currentUser.id);
+      await syncService.deleteCategory(id, currentUser.id);
+    } else {
+      syncService.markCategoryDeleted(id);
     }
+
+    // 5. Delete category locally from Dexie
+    await db.categories.delete(id);
+
     showToast(
       language === 'id'
         ? 'Kategori berhasil dihapus dan transaksi dialihkan.'
