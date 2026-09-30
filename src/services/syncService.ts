@@ -33,13 +33,70 @@ export function markCategoryDeleted(id: string) {
   }
 }
 
+const UNSUPPORTED_COLS_KEY = 'duit_unsupported_columns';
+
 /**
- * Melakukan upsert data ke Supabase secara aman dengan self-healing.
- * 1. Mendukung skema baru (composite PK: id, user_id) dengan fallback otomatis
- *    ke skema legacy (single PK: id) jika backend belum dimigrasi.
- * 2. Menangani error PostgREST (42P10, PGRST100, pesan text onConflict).
- * 3. Self-healing pada PostgreSQL error 23503 (foreign_key_violation) jika transaksi/anggaran
- *    merujuk ke category_id yang belum ada atau telah dihapus di Supabase.
+ * Mendapatkan daftar kolom yang tidak didukung / belum ada di tabel Supabase
+ */
+export function getUnsupportedColumns(): Set<string> {
+  try {
+    const raw = localStorage.getItem(UNSUPPORTED_COLS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Menandai kolom tertentu pada tabel sebagai tidak didukung agar tidak dikirim ke Supabase
+ */
+export function markColumnUnsupported(table: string, col: string) {
+  try {
+    const set = getUnsupportedColumns();
+    set.add(`${table}.${col}`);
+    localStorage.setItem(UNSUPPORTED_COLS_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn('[SyncService] Failed to cache unsupported column in localStorage:', e);
+  }
+}
+
+/**
+ * Mengekstrak nama kolom yang hilang dari pesan error PostgREST / PostgreSQL
+ */
+function extractMissingColumn(err: any): string | null {
+  if (!err) return null;
+  const msg = typeof err === 'string' ? err : err.message || '';
+  const m1 = msg.match(/Could not find the '([^']+)' column/i);
+  if (m1) return m1[1];
+  const m2 = msg.match(/column "?([^"\s.]+)"? of relation/i);
+  if (m2) return m2[1];
+  const m3 = msg.match(/column [^.]+\.([^ ]+) does not exist/i);
+  if (m3) return m3[1];
+  return null;
+}
+
+/**
+ * Membersihkan field dari payload yang diketahui tidak didukung di skema cloud saat ini
+ */
+function sanitizePayload(table: string, payload: any[]): any[] {
+  const unsupported = getUnsupportedColumns();
+  return payload.map((item) => {
+    const clone = { ...item };
+    for (const key of Object.keys(clone)) {
+      if (unsupported.has(`${table}.${key}`)) {
+        delete clone[key];
+      }
+    }
+    return clone;
+  });
+}
+
+/**
+ * Melakukan upsert data ke Supabase secara aman, batching, dan multi-level self-healing:
+ * 1. Batching chunk (maks 100 baris per request) mencegah 413 Payload Too Large / timeout.
+ * 2. Self-healing kolom hilang (PGRST204 / 42703, misal: order_index) secara otomatis dan dinamis.
+ * 3. Fallback onConflict composite (id, user_id) -> single (id) jika database belum dimigrasi.
+ * 4. Self-healing Foreign Key violation (23503) dengan auto-anchor ke cat-others / null.
  */
 export async function safeUpsert(table: string, payload: any[]) {
   if (!payload || payload.length === 0) return;
@@ -53,61 +110,124 @@ export async function safeUpsert(table: string, payload: any[]) {
       err.message.includes('on_conflict')
     ));
 
-  // 1. Coba upsert dengan onConflict: 'id, user_id' (skema modern multi-user)
-  const { error: primaryError } = await supabase
-    .from(table)
-    .upsert(payload, { onConflict: 'id, user_id' });
+  const isMissingColumnError = (err: any) =>
+    err?.code === 'PGRST204' ||
+    err?.code === '42703' ||
+    (typeof err?.message === 'string' && (
+      err.message.includes('Could not find the') ||
+      (err.message.includes('column') && err.message.includes('does not exist'))
+    ));
 
-  if (!primaryError) {
-    return;
+  const isForeignKeyViolation = (err: any) =>
+    err?.code === '23503' ||
+    (typeof err?.message === 'string' && (
+      err.message.includes('foreign key') ||
+      err.message.includes('violates foreign key constraint')
+    ));
+
+  // Chunking maks 100 baris per request
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+    const chunk = payload.slice(i, i + CHUNK_SIZE);
+    await upsertSingleChunk(table, chunk, isConflictSpecificationError, isMissingColumnError, isForeignKeyViolation);
+  }
+}
+
+async function upsertSingleChunk(
+  table: string,
+  rawChunk: any[],
+  isConflictSpecificationError: (err: any) => boolean,
+  isMissingColumnError: (err: any) => boolean,
+  isForeignKeyViolation: (err: any) => boolean
+) {
+  let chunk = sanitizePayload(table, rawChunk);
+  let conflictMode: 'id, user_id' | 'id' = 'id, user_id';
+
+  const doUpsert = async (data: any[], onConflictCols: string) => {
+    return await supabase.from(table).upsert(data, { onConflict: onConflictCols });
+  };
+
+  let { error: currentError } = await doUpsert(chunk, conflictMode);
+
+  // Level 1: Deteksi dan atasi kolom yang belum ada di schema database cloud (misal order_index)
+  if (currentError && isMissingColumnError(currentError)) {
+    const missingCol = extractMissingColumn(currentError);
+    if (missingCol) {
+      console.warn(`[SyncService] Column '${missingCol}' not found on table '${table}'. Auto-adapting payload...`);
+      markColumnUnsupported(table, missingCol);
+      chunk = sanitizePayload(table, chunk);
+      const retry = await doUpsert(chunk, conflictMode);
+      currentError = retry.error;
+    }
   }
 
-  // 2. Jika skema database belum memiliki constraint composite (id, user_id) -> PostgreSQL 42P10 / PostgREST PGRST100
-  if (isConflictSpecificationError(primaryError)) {
-    const { error: fallbackError } = await supabase
-      .from(table)
-      .upsert(payload, { onConflict: 'id' });
+  // Level 2: Fallback ke onConflict: 'id' jika tabel cloud belum memiliki constraint composite (id, user_id)
+  if (currentError && isConflictSpecificationError(currentError)) {
+    conflictMode = 'id';
+    console.warn(`[SyncService] Composite conflict unsupported on ${table}. Falling back to onConflict: 'id'...`);
+    const fallback = await doUpsert(chunk, conflictMode);
+    currentError = fallback.error;
 
-    if (!fallbackError) {
-      return;
-    }
-
-    // Jika fallback gagal karena foreign key violation (23503), lanjutkan ke self-healing di bawah
-    if (fallbackError.code !== '23503') {
-      console.error(`[SyncService] Fallback upsert failed on ${table}:`, fallbackError);
-      throw new Error(`Gagal menyinkronkan ${table}: ${fallbackError.message}`);
-    }
-  }
-
-  // 3. Self-healing jika terjadi foreign key error (23503) pada relasi category_id
-  if (primaryError?.code === '23503' && (table === 'transactions' || table === 'budgets' || table === 'recurring_expenses')) {
-    console.warn(`[SyncService] FK constraint error (23503) on ${table}. Self-healing orphaned category IDs to cat-others...`);
-    const healedPayload = payload.map((item) => ({
-      ...item,
-      category_id: table === 'budgets' ? (item.category_id ? 'cat-others' : null) : 'cat-others',
-    }));
-
-    // Coba simpan kembali dengan payload yang telah disembuhkan
-    const { error: healError } = await supabase
-      .from(table)
-      .upsert(healedPayload, { onConflict: 'id, user_id' });
-
-    if (!healError) {
-      return;
-    }
-
-    if (isConflictSpecificationError(healError)) {
-      const { error: healFallbackError } = await supabase
-        .from(table)
-        .upsert(healedPayload, { onConflict: 'id' });
-      if (!healFallbackError) {
-        return;
+    if (currentError && isMissingColumnError(currentError)) {
+      const missingCol = extractMissingColumn(currentError);
+      if (missingCol) {
+        console.warn(`[SyncService] Column '${missingCol}' not found on fallback ${table}. Auto-adapting...`);
+        markColumnUnsupported(table, missingCol);
+        chunk = sanitizePayload(table, chunk);
+        const retry = await doUpsert(chunk, conflictMode);
+        currentError = retry.error;
       }
     }
   }
 
-  console.error(`[SyncService] Upsert error on ${table}:`, primaryError);
-  throw new Error(`Gagal menyinkronkan ${table}: ${primaryError.message}`);
+  // Level 3: Self-healing Foreign Key error (23503) pada relasi category_id
+  if (
+    currentError &&
+    isForeignKeyViolation(currentError) &&
+    (table === 'transactions' || table === 'budgets' || table === 'recurring_expenses')
+  ) {
+    console.warn(`[SyncService] FK constraint error (23503) on ${table}. Self-healing orphaned category IDs...`);
+
+    // Pastikan kategori jangkar 'cat-others' telah terdaftar di Supabase untuk user ini
+    const sampleUserId = chunk[0]?.user_id;
+    if (sampleUserId) {
+      try {
+        let anchorCat: any = {
+          id: 'cat-others',
+          user_id: sampleUserId,
+          name: 'Lain-lain',
+          icon: 'CircleEllipsis',
+          color: '#64748b',
+          budget_limit: 0,
+          is_default: true,
+          created_at: new Date().toISOString(),
+        };
+        anchorCat = sanitizePayload('categories', [anchorCat])[0];
+        await supabase.from('categories').upsert([anchorCat], { onConflict: conflictMode });
+      } catch (anchorErr) {
+        console.warn('[SyncService] Failed to auto-seed anchor cat-others in cloud:', anchorErr);
+      }
+    }
+
+    const healedChunk = chunk.map((item) => ({
+      ...item,
+      category_id: table === 'budgets' ? null : 'cat-others',
+    }));
+
+    const healedResult = await doUpsert(healedChunk, conflictMode);
+    currentError = healedResult.error;
+
+    if (currentError && isConflictSpecificationError(currentError) && conflictMode === 'id, user_id') {
+      conflictMode = 'id';
+      const healedFallback = await doUpsert(healedChunk, conflictMode);
+      currentError = healedFallback.error;
+    }
+  }
+
+  if (currentError) {
+    console.error(`[SyncService] Upsert error on ${table}:`, currentError);
+    throw new Error(`Gagal menyinkronkan ${table}: ${currentError.message}`);
+  }
 }
 
 export const syncService = {
@@ -208,6 +328,10 @@ export const syncService = {
           const relRec = await db.recurringExpenses.where('categoryId').equals(localCat.id).toArray();
           for (const r of relRec) {
             await db.recurringExpenses.update(r.id, { categoryId: matchedCloudId });
+          }
+          const relBudgets = await db.budgets.where('categoryId').equals(localCat.id).toArray();
+          for (const b of relBudgets) {
+            await db.budgets.update(b.id, { categoryId: matchedCloudId });
           }
           await db.categories.delete(localCat.id);
         }

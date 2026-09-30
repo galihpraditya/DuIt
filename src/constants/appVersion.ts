@@ -8,8 +8,8 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG: AppConfig = {
-  version: '2.0.1',
-  buildNumber: 3,
+  version: '2.0.2',
+  buildNumber: 4,
   appName: 'DuIt Expense Tracker',
   githubRepo: 'galihpraditya/DuIt',
   // Static permanent download link for the latest release APK on GitHub Releases

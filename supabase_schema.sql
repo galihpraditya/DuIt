@@ -25,10 +25,11 @@ BEGIN
     EXECUTE 'ALTER TABLE public.' || quote_ident(r.table_name) || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(r.constraint_name) || ' CASCADE;';
   END LOOP;
 
-  -- Ubah primary key categories menjadi composite (id, user_id)
+  -- Ubah primary key categories menjadi composite (id, user_id) dan tambahkan kolom jika belum ada
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories' AND table_schema = 'public') THEN
     ALTER TABLE public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
     ALTER TABLE public.categories ADD PRIMARY KEY (id, user_id);
+    ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS order_index INT DEFAULT 0;
   END IF;
 
   -- Ubah primary key transactions menjadi composite (id, user_id)
