@@ -160,7 +160,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         setAmountStr(single.amount.toLocaleString('id-ID'));
       }
       if (single.categoryId) {
-        const found = categories.find((c) => c.id === single.categoryId);
+        const found = categories.find(
+          (c) =>
+            c.id === single.categoryId ||
+            c.name.toLowerCase().trim() === single.categoryId?.toLowerCase().trim()
+        );
         if (found) {
           setSelectedCategoryId(found.id);
         }
@@ -207,9 +211,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      const defaultOthersId =
+        categories.find((c) => c.id === 'cat-others' || /lain|other/i.test(c.name))?.id ||
+        categories[0]?.id ||
+        'cat-others';
+
       const formatted = batchItems.map((item) => ({
         amount: Math.round(item.amount),
-        categoryId: item.categoryId || categories[0]?.id || 'cat-others',
+        categoryId: item.categoryId || defaultOthersId,
         notes: (item.notes || 'Pengeluaran').trim(),
         paymentMethod: item.paymentMethod || 'Tunai',
         date: item.dateIso || new Date().toISOString(),

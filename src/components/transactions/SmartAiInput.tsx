@@ -100,7 +100,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
     try {
       const results = await aiService.parseNaturalTransactions(
         text,
-        categories.map((c) => ({ id: c.id, name: c.name }))
+        categories.map((c) => ({ id: c.id, name: c.name, isDefault: c.isDefault }))
       );
 
       if (results && results.length > 0) {
