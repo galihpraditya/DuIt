@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { Loader2, PieChart as PieIcon } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
-import { subDays, format } from 'date-fns';
+import { subDays, format, differenceInCalendarDays } from 'date-fns';
 import { id as idLocale, enUS as enLocale } from 'date-fns/locale';
 import type { Language, Translations } from '../../constants/translations';
 import {
@@ -88,6 +88,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       isCurrentMonth ? new Date() : currentInterval.start
     );
   }, [categories, analyticsData, isCurrentMonth, currentInterval.start]);
+
+  const budgetTarget = useMemo(() => {
+    if (!safeData?.hasBudget || !safeData.totalMonthlyBudget) return 0;
+    const totalDays = differenceInCalendarDays(currentInterval.end, currentInterval.start) + 1;
+    const isYearly = selectedPeriod === 'this_year' || totalDays > 365;
+    const isWeekly = !isYearly && totalDays > 70;
+
+    if (isYearly) {
+      return safeData.totalMonthlyBudget;
+    }
+    if (isWeekly) {
+      return Math.round((safeData.totalMonthlyBudget / 30) * 7);
+    }
+    const daysInMonth = safeData.totalDaysInMonth || 30;
+    return Math.round(safeData.totalMonthlyBudget / daysInMonth);
+  }, [safeData, currentInterval, selectedPeriod]);
 
   // Hanya tampilkan loader jika data awal Dexie belum tersedia sama sekali pada cold load
   if (!analyticsData || !safeData) {
@@ -204,6 +220,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <TrendChart
             trendData={trendData}
             averagePerDay={averagePerDay}
+            budgetTarget={budgetTarget}
             chartType={chartType}
             onChangeChartType={setChartType}
             darkMode={darkMode}

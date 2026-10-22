@@ -18,6 +18,7 @@ import type { Language, Translations } from '../../constants/translations';
 interface TrendChartProps {
   trendData: TrendDataEntry[];
   averagePerDay?: number;
+  budgetTarget?: number;
   chartType: 'bar' | 'area';
   onChangeChartType: (type: 'bar' | 'area') => void;
   darkMode?: boolean;
@@ -28,6 +29,7 @@ interface TrendChartProps {
 export const TrendChart: React.FC<TrendChartProps> = React.memo(({
   trendData,
   averagePerDay,
+  budgetTarget,
   chartType,
   onChangeChartType,
   darkMode = false,
@@ -50,10 +52,28 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
     <div className="glass-card p-5 rounded-3xl space-y-4 h-full flex flex-col justify-between">
       {/* Chart Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
-          <BarChart3 className="w-4 h-4 text-emerald-500" />
-          <span>{t.trendChartTitle}</span>
-        </h3>
+        <div>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+            <BarChart3 className="w-4 h-4 text-emerald-500" />
+            <span>{t.trendChartTitle}</span>
+          </h3>
+          {(Boolean(averagePerDay && averagePerDay > 0) || Boolean(budgetTarget && budgetTarget > 0)) && (
+            <div className="flex items-center gap-3 mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {averagePerDay && averagePerDay > 0 ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500" />
+                  <span>{t.avgReferenceLineLabel}</span>
+                </div>
+              ) : null}
+              {budgetTarget && budgetTarget > 0 ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 border-t-2 border-dashed border-blue-500" />
+                  <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.budgetReferenceLineLabel}</span>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
 
         {/* Chart Type Toggle */}
         <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
@@ -108,6 +128,21 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
+                {budgetTarget && budgetTarget > 0 && (
+                  <ReferenceLine
+                    y={budgetTarget}
+                    stroke="#3b82f6"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `${t.budgetReferenceLineLabel}: ${formatIDR(budgetTarget, true, lang)}`,
+                      fill: '#3b82f6',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      position: 'insideTopLeft',
+                    }}
+                  />
+                )}
                 {averagePerDay && averagePerDay > 0 && (
                   <ReferenceLine
                     y={averagePerDay}
@@ -155,6 +190,21 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
+                {budgetTarget && budgetTarget > 0 && (
+                  <ReferenceLine
+                    y={budgetTarget}
+                    stroke="#3b82f6"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `${t.budgetReferenceLineLabel}: ${formatIDR(budgetTarget, true, lang)}`,
+                      fill: '#3b82f6',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      position: 'insideTopLeft',
+                    }}
+                  />
+                )}
                 {averagePerDay && averagePerDay > 0 && (
                   <ReferenceLine
                     y={averagePerDay}

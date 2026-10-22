@@ -313,7 +313,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="fixed inset-0 h-[100dvh] z-50 flex justify-end overflow-hidden">
             {/* Backdrop: dimming the dashboard with lightweight GPU-friendly overlay */}
             <motion.div
-              className="fixed inset-0 bg-slate-950/45 dark:bg-slate-950/70 sm:backdrop-blur-xs"
+              className="fixed inset-0 bg-slate-950/45 dark:bg-black/80 sm:backdrop-blur-xs"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -324,7 +324,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
             {/* Slide-over Right Sidebar Panel (100% full-screen on mobile, max-w-lg right drawer on desktop) */}
             <motion.div
-              className="relative z-10 w-full sm:max-w-lg lg:max-w-xl h-[100dvh] sm:h-full max-h-[100dvh] flex flex-col bg-white dark:bg-slate-900 sm:border-l border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transform-gpu"
+              className="transaction-modal-drawer relative z-10 w-full sm:max-w-lg lg:max-w-xl h-[100dvh] sm:h-full max-h-[100dvh] flex flex-col bg-white dark:bg-slate-900 sm:border-l border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transform-gpu"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -333,7 +333,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               {/* Header */}
               <div
                 style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.875rem)' }}
-                className="px-5 pb-3.5 sm:pb-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
+                className="transaction-modal-header px-5 pb-3.5 sm:pb-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
               >
                 <div className="flex items-center space-x-2.5">
                   {/* Mobile Back Button */}
@@ -413,7 +413,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     {batchItems.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3"
+                        className="transaction-modal-card p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold flex items-center justify-center shrink-0">
@@ -423,7 +423,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           <select
                             value={item.categoryId || ''}
                             onChange={(e) => handleUpdateBatchItem(idx, { categoryId: e.target.value })}
-                            className="flex-1 text-xs font-semibold py-1.5 px-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 truncate cursor-pointer focus:outline-none focus:border-emerald-500"
+                            className="transaction-modal-input flex-1 text-xs font-semibold py-1.5 px-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 truncate cursor-pointer focus:outline-none focus:border-emerald-500"
                           >
                             {categories.map((cat) => (
                               <option key={cat.id} value={cat.id}>
@@ -453,7 +453,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                               value={item.notes}
                               onChange={(e) => handleUpdateBatchItem(idx, { notes: e.target.value })}
                               placeholder={t.notesPlaceholder}
-                              className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                              className="transaction-modal-input w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
 
@@ -471,7 +471,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                 handleUpdateBatchItem(idx, { amount: val });
                               }}
                               placeholder="0"
-                              className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                              className="transaction-modal-input w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                             />
                           </div>
                         </div>
@@ -488,7 +488,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                   key={m.id}
                                   type="button"
                                   onClick={() => handleUpdateBatchItem(idx, { paymentMethod: m.id })}
-                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                                  className={`transaction-modal-chip px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
                                     isSel
                                       ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 dark:border-emerald-500 shadow-2xs'
                                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -506,7 +506,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 ) : (
                   <>
                     {/* Nominal Hero Card */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 space-y-3">
+                    <div className="transaction-modal-card p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           {t.amountLabel}
@@ -543,7 +543,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                             key={q.value}
                             type="button"
                             onClick={() => handleAddIncrement(q.value)}
-                            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                            className="transaction-modal-chip shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-95 transition-all cursor-pointer shadow-2xs"
                           >
                             {q.label}
                           </button>
@@ -581,7 +581,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                               className={`flex items-center space-x-2.5 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                                 isSelected
                                   ? 'border-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/60 dark:border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm'
-                                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/40'
+                                  : 'transaction-modal-chip border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/40'
                               }`}
                             >
                               <div
@@ -616,12 +616,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder={t.notesPlaceholder}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                        className="transaction-modal-input w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       />
                     </div>
 
                     {/* Detail Tanggal & Metode Pembayaran */}
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 bg-slate-50/60 dark:bg-slate-800/40">
+                    <div className="transaction-modal-card rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 bg-slate-50/60 dark:bg-slate-800/40">
                       <div className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-2">
                         <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>{t.detailSectionLabel}</span>
@@ -645,7 +645,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                 className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-1 cursor-pointer ${
                                   isSelected
                                     ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 dark:border-emerald-500 shadow-2xs'
-                                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    : 'transaction-modal-chip border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 <IconComponent className="w-3.5 h-3.5 shrink-0" />
@@ -666,7 +666,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           type="datetime-local"
                           value={dateStr}
                           onChange={(e) => setDateStr(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
+                          className="transaction-modal-input w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
                         />
                         <div className="flex items-center gap-1.5 pt-1">
                           <button
@@ -676,7 +676,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                               isToday
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                : 'transaction-modal-chip bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                             }`}
                           >
                             {t.todayQuickLabel}
@@ -688,7 +688,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                               isYesterday
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                : 'transaction-modal-chip bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                             }`}
                           >
                             {t.yesterdayQuickLabel}
@@ -703,7 +703,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               {/* Sticky Footer with safe-area clearance */}
               <div
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-                className="px-5 sm:px-6 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
+                className="transaction-modal-footer px-5 sm:px-6 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md"
               >
                 {batchItems && batchItems.length > 0 ? (
                   <div className="space-y-2">

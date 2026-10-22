@@ -125,7 +125,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
   };
 
   return (
-    <div className="rounded-2xl p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 transition-all">
+    <div className="transaction-modal-card rounded-2xl p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 transition-all">
       {/* Top Bar Label */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -180,7 +180,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
               }}
               placeholder={t.aiInputPlaceholder || 'Contoh: Kopi 25rb tunai, Bensin 50rb transfer, Makan siang 35rb qris...'}
               disabled={isProcessing}
-              className="w-full h-11 pl-3.5 pr-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all disabled:opacity-60"
+              className="transaction-modal-input w-full h-11 pl-3.5 pr-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all disabled:opacity-60"
             />
           </div>
 
@@ -190,7 +190,7 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
             onClick={handleStartListening}
             disabled={isProcessing}
             title="Bicara dengan suara"
-            className="w-11 h-11 min-w-[44px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+            className="transaction-modal-chip w-11 h-11 min-w-[44px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
           >
             <Mic className="w-4 h-4 stroke-[2.2]" />
           </button>

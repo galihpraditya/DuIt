@@ -185,53 +185,6 @@ export function App() {
     });
   }, []);
 
-  // Manual Refresh & Cloud Sync State
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-
-  const handleRefreshData = useCallback(async () => {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    const startTimestamp = Date.now();
-    try {
-      // 1. Dapatkan user session secara instan dari state aktif atau cache auth
-      let activeUserId = currentUser?.id;
-      if (!activeUserId) {
-        const freshUser = await authService.getCurrentUser();
-        if (freshUser?.id) {
-          setCurrentUser(freshUser);
-          activeUserId = freshUser.id;
-        }
-      }
-
-      if (activeUserId) {
-        const res = await syncService.syncAll(activeUserId);
-        if (!res.success) {
-          throw new Error(res.error || t.cloudSyncFailed);
-        }
-        showToast(t.cloudSyncSuccess, 'success');
-      } else {
-        // User belum masuk ke akun Supabase (offline/guest)
-        setCurrentUser(null);
-        await db.transactions.count();
-        showToast(
-          language === 'id'
-            ? 'Data lokal tersimpan. Masuk ke akun Anda untuk sinkronisasi cloud.'
-            : 'Local data saved. Sign in to your account for cloud sync.',
-          'info'
-        );
-      }
-    } catch (err: any) {
-      console.error('Refresh/Sync error:', err);
-      showToast(err?.message || t.cloudSyncFailed || 'Gagal menyinkronkan data', 'error');
-    } finally {
-      const elapsed = Date.now() - startTimestamp;
-      const remainingDelay = Math.max(0, 250 - elapsed);
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, remainingDelay);
-    }
-  }, [isRefreshing, currentUser, language, showToast, t.cloudSyncFailed, t.cloudSyncSuccess]);
-
   // Handle Android Native Hardware Back Button (Capacitor)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -871,8 +824,6 @@ export function App() {
           onOpenNewTransaction={handleOpenNewTransaction}
           activeTab={activeTab}
           onSelectTab={handleTabNavigation}
-          onRefresh={handleRefreshData}
-          isRefreshing={isRefreshing}
           t={t}
         />
       </div>

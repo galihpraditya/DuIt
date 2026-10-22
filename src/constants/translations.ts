@@ -198,6 +198,7 @@ export interface Translations {
   adviceCritical: string;
   topBurnerLabel: string;
   avgReferenceLineLabel: string;
+  budgetReferenceLineLabel: string;
   categoryBudgetLimitUsed: string;
   categoryOverbudgetBadge: string;
   adviceLabel: string;
@@ -612,6 +613,7 @@ export const translations: Record<Language, Translations> = {
     adviceCritical: 'Proyeksi pengeluaran melampaui target anggaran. Tahan belanja non-pokok dan evaluasi batas kategori.',
     topBurnerLabel: 'Penyerap Anggaran Terbesar',
     avgReferenceLineLabel: 'Rata-rata',
+    budgetReferenceLineLabel: 'Target Budget',
     categoryBudgetLimitUsed: 'terpakai dari limit',
     categoryOverbudgetBadge: 'Melebihi Limit',
     adviceLabel: 'Saran',
@@ -1027,6 +1029,7 @@ export const translations: Record<Language, Translations> = {
     adviceCritical: 'Projected spending will exceed your monthly budget. Pause non-essential purchases and review category limits.',
     topBurnerLabel: 'Top Burner Category',
     avgReferenceLineLabel: 'Average',
+    budgetReferenceLineLabel: 'Budget Target',
     categoryBudgetLimitUsed: 'used of limit',
     categoryOverbudgetBadge: 'Over Limit',
     adviceLabel: 'Recommendation',
