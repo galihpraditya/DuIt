@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -14,6 +14,7 @@ import {
   Square,
   Layers,
   Calendar,
+  Edit2,
 } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
@@ -27,7 +28,9 @@ interface CategoryDetailModalProps {
   category: Category | null;
   categories: Category[];
   transactions: Transaction[];
-  onBatchMoveTransactions: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
+  onBatchMoveTransactions?: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
+  onEditTransaction?: (transaction: Transaction) => void;
+  initialPeriodFilter?: 'ALL' | 'THIS_MONTH';
   lang?: Language;
   t: Translations;
 }
@@ -56,6 +59,8 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   categories,
   transactions,
   onBatchMoveTransactions,
+  onEditTransaction,
+  initialPeriodFilter = 'ALL',
   lang = 'id',
   t,
 }) => {
@@ -64,8 +69,18 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   const [isMovePickerOpen, setIsMovePickerOpen] = useState(false);
   const [targetCatId, setTargetCatId] = useState<string>('');
   const [isSubmittingMove, setIsSubmittingMove] = useState(false);
-  const [periodFilter, setPeriodFilter] = useState<'ALL' | 'THIS_MONTH'>('ALL');
+  const [periodFilter, setPeriodFilter] = useState<'ALL' | 'THIS_MONTH'>(initialPeriodFilter);
   const [moveError, setMoveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPeriodFilter(initialPeriodFilter);
+      setSearchQuery('');
+      setSelectedIds(new Set());
+      setIsMovePickerOpen(false);
+      setMoveError(null);
+    }
+  }, [isOpen, initialPeriodFilter, category?.id]);
 
   const currentMonthKey = useMemo(() => format(new Date(), 'yyyy-MM'), []);
 
@@ -77,19 +92,24 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [category, transactions]);
 
+  // All transactions belonging to this category this month
+  const thisMonthTransactions = useMemo(() => {
+    return categoryAllTransactions.filter((tx) => {
+      try {
+        return format(parseISO(tx.date), 'yyyy-MM') === currentMonthKey;
+      } catch {
+        return false;
+      }
+    });
+  }, [categoryAllTransactions, currentMonthKey]);
+
   // Filtered by period: ALL or THIS_MONTH
   const periodFilteredTxs = useMemo(() => {
     if (periodFilter === 'THIS_MONTH') {
-      return categoryAllTransactions.filter((tx) => {
-        try {
-          return format(parseISO(tx.date), 'yyyy-MM') === currentMonthKey;
-        } catch {
-          return false;
-        }
-      });
+      return thisMonthTransactions;
     }
     return categoryAllTransactions;
-  }, [categoryAllTransactions, periodFilter, currentMonthKey]);
+  }, [categoryAllTransactions, thisMonthTransactions, periodFilter]);
 
   // Filtered by search query
   const displayedTxs = useMemo(() => {
@@ -149,7 +169,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   };
 
   const handleConfirmBatchMove = async () => {
-    if (!targetCatId || selectedIds.size === 0) return;
+    if (!targetCatId || selectedIds.size === 0 || !onBatchMoveTransactions) return;
     try {
       setIsSubmittingMove(true);
       setMoveError(null);
@@ -202,6 +222,28 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
                     </span>
                     <span>•</span>
                     <span>{displayedTxs.length} {lang === 'en' ? 'records' : 'transaksi'}</span>
+                    {category.budgetLimit && category.budgetLimit > 0 ? (
+                      <>
+                        <span>•</span>
+                        <span>
+                          {t.limitLabel || 'Limit:'}{' '}
+                          <strong className="text-slate-900 dark:text-slate-100 font-bold">
+                            {formatIDR(category.budgetLimit, false, lang)}
+                          </strong>
+                        </span>
+                        {periodFilter === 'THIS_MONTH' && (
+                          displayedTotal > category.budgetLimit ? (
+                            <span className="font-bold text-rose-600 dark:text-rose-400">
+                              ({t.overBy} {formatIDR(displayedTotal - category.budgetLimit, false, lang)})
+                            </span>
+                          ) : (
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                              ({t.remaining} {formatIDR(category.budgetLimit - displayedTotal, false, lang)})
+                            </span>
+                          )
+                        )}
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -242,7 +284,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>{lang === 'en' ? 'This Month' : 'Bulan Ini'}</span>
+                  <span>{lang === 'en' ? 'This Month' : 'Bulan Ini'} ({thisMonthTransactions.length})</span>
                 </button>
               </div>
 
@@ -292,7 +334,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
                   {searchQuery
                     ? t.noMatchFilter
                     : periodFilter === 'THIS_MONTH'
-                    ? (lang === 'en' ? 'No transactions in this category for this month.' : 'Tidak ada transaksi di kategori ini pada bulan ini.')
+                    ? (t.categoryNoTransactionsThisMonth || (lang === 'en' ? 'No transactions in this category for this month.' : 'Tidak ada transaksi di kategori ini pada bulan ini.'))
                     : t.categoryNoTransactions}
                 </p>
                 {periodFilter === 'THIS_MONTH' && categoryAllTransactions.length > 0 && (
@@ -355,12 +397,26 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Right: Amount & Quick Move Button */}
-                    <div className="shrink-0 flex items-center space-x-2">
+                    {/* Right: Amount & Action Buttons */}
+                    <div className="shrink-0 flex items-center space-x-1.5 sm:space-x-2">
                       <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
                         {formatIDR(tx.amount, false, lang)}
                       </span>
-                      {availableTargetCategories.length > 0 && (
+                      {onEditTransaction && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                            onEditTransaction(tx);
+                          }}
+                          title={t.edit || 'Edit'}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {availableTargetCategories.length > 0 && onBatchMoveTransactions && (
                         <button
                           type="button"
                           onClick={(e) => {

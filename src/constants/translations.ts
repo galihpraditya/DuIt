@@ -372,6 +372,7 @@ export interface Translations {
   categoryDetails: string;
   categoryTransactions: string;
   categoryNoTransactions: string;
+  categoryNoTransactionsThisMonth: string;
   moveCategory: string;
   selectDestinationCategory: string;
   selectedCount: string;
@@ -790,6 +791,7 @@ export const translations: Record<Language, Translations> = {
     categoryDetails: 'Detail Kategori',
     categoryTransactions: 'Transaksi Kategori',
     categoryNoTransactions: 'Belum ada transaksi di kategori ini.',
+    categoryNoTransactionsThisMonth: 'Tidak ada transaksi di kategori ini pada bulan ini.',
     moveCategory: 'Pindahkan Kategori',
     selectDestinationCategory: 'Pilih Kategori Tujuan',
     selectedCount: 'transaksi dipilih',
@@ -1205,6 +1207,7 @@ export const translations: Record<Language, Translations> = {
     categoryDetails: 'Category Details',
     categoryTransactions: 'Category Transactions',
     categoryNoTransactions: 'No transactions in this category yet.',
+    categoryNoTransactionsThisMonth: 'No transactions in this category for this month.',
     moveCategory: 'Move Category',
     selectDestinationCategory: 'Select Destination Category',
     selectedCount: 'transactions selected',

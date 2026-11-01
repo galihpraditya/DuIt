@@ -991,8 +991,13 @@ export function App() {
             <Suspense fallback={<ViewLoaderFallback />}>
               <BudgetManager
                 categories={sortedCategories}
-                transactions={transactions}
+                transactions={allTransactions}
+                allTransactions={allTransactions}
                 onUpdateCategoryBudget={handleUpdateCategoryBudget}
+                onBatchMoveTransactions={handleBatchMoveTransactions}
+                onEditTransaction={(tx) => {
+                  navigate(`/transactions/edit/${tx.id}`);
+                }}
                 lang={language}
                 t={t}
               />
@@ -1009,6 +1014,9 @@ export function App() {
                 onSaveCategory={handleSaveCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onBatchMoveTransactions={handleBatchMoveTransactions}
+                onEditTransaction={(tx) => {
+                  navigate(`/transactions/edit/${tx.id}`);
+                }}
                 sortMode={categorySortMode}
                 onChangeSortMode={handleSortModeChange}
                 onReorderCategories={handleReorderCategories}

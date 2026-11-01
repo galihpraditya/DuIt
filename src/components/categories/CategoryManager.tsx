@@ -35,6 +35,7 @@ interface CategoryManagerProps {
   onSaveCategory: (category: Omit<Category, 'id' | 'createdAt'>, id?: string) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>;
   onBatchMoveTransactions?: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
+  onEditTransaction?: (transaction: Transaction) => void;
   sortMode?: CategorySortMode;
   onChangeSortMode?: (mode: CategorySortMode) => void;
   onReorderCategories?: (reorderedCategories: Category[]) => Promise<void>;
@@ -67,6 +68,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   onSaveCategory,
   onDeleteCategory,
   onBatchMoveTransactions,
+  onEditTransaction,
   sortMode,
   onChangeSortMode,
   onReorderCategories,
@@ -562,6 +564,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             await onBatchMoveTransactions(txIds, targetCatId);
           }
         }}
+        onEditTransaction={onEditTransaction}
         lang={lang}
         t={t}
       />

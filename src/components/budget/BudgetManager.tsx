@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
-import { Target, AlertTriangle, CheckCircle2, Edit2, Calendar, ShieldCheck } from 'lucide-react';
+import { Target, AlertTriangle, CheckCircle2, Edit2, Calendar, ShieldCheck, ChevronRight } from 'lucide-react';
+import { CategoryDetailModal } from '../categories/CategoryDetailModal';
 import type { Category, Transaction } from '../../types';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR, getRemainingDaysInCurrentMonth } from '../../utils/formatters';
@@ -11,7 +12,10 @@ import type { Language, Translations } from '../../constants/translations';
 interface BudgetManagerProps {
   categories: Category[];
   transactions?: Transaction[];
+  allTransactions?: Transaction[];
   onUpdateCategoryBudget: (categoryId: string, limit: number | undefined) => Promise<void>;
+  onBatchMoveTransactions?: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
+  onEditTransaction?: (transaction: Transaction) => void;
   lang?: Language;
   t: Translations;
 }
@@ -19,12 +23,22 @@ interface BudgetManagerProps {
 export const BudgetManager: React.FC<BudgetManagerProps> = ({
   categories,
   transactions,
+  allTransactions,
   onUpdateCategoryBudget,
+  onBatchMoveTransactions,
+  onEditTransaction,
   lang = 'id',
   t,
 }) => {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editLimitStr, setEditLimitStr] = useState('');
+  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState<Category | null>(null);
+
+  // Fallback Dexie all transactions for category detail modal
+  const dexieAllTxs = useLiveQuery(() => db.transactions.toArray());
+  const effectiveAllTransactions = useMemo(() => {
+    return allTransactions || transactions || dexieAllTxs || [];
+  }, [allTransactions, transactions, dexieAllTxs]);
 
   // Current month interval
   const monthInterval = useMemo(() => {
@@ -183,20 +197,30 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
           return (
             <div
               key={cat.id}
-              className="glass-card rounded-3xl p-5 flex flex-col justify-between"
+              onClick={() => {
+                if (!isEditing) {
+                  setSelectedCategoryForDetail(cat);
+                }
+              }}
+              className="glass-card rounded-3xl p-5 flex flex-col justify-between cursor-pointer hover:border-emerald-500/50 dark:hover:border-emerald-500/40 hover:shadow-md transition-all active:scale-[0.99] group"
             >
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-105 transition-transform"
                       style={{ backgroundColor: cat.color }}
                     >
                       <DynamicIcon name={cat.icon} className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">{cat.name}</h4>
-                      <p className="text-xs text-slate-400">
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-1.5">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
+                          {cat.name}
+                        </h4>
+                        <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
                         {lang === 'en' ? 'Spent:' : 'Terpakai:'}{' '}
                         <span className="font-semibold text-slate-700 dark:text-slate-200">
                           {formatIDR(spent, false, lang)}
@@ -206,7 +230,8 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
                   </div>
 
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (isEditing) {
                         setEditingCatId(null);
                       } else {
@@ -214,7 +239,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
                         setEditLimitStr(cat.budgetLimit ? cat.budgetLimit.toString() : '');
                       }
                     }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
+                    className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95 shrink-0"
                     title={t.setBudgetLimit}
                   >
                     <Edit2 className="w-4 h-4" />
@@ -223,7 +248,10 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
 
                 {/* Edit Inline Form */}
                 {isEditing && (
-                  <div className="mt-3 p-3.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 animate-in fade-in">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-3 p-3.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 animate-in fade-in"
+                  >
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                       {t.maxLimitPerMonth}
                     </label>
@@ -288,11 +316,12 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
                   <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>{t.noBudgetLimitYet}</span>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingCatId(cat.id);
                         setEditLimitStr('');
                       }}
-                      className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                      className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline cursor-pointer"
                     >
                       {t.setBudgetLimit}
                     </button>
@@ -303,6 +332,20 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
           );
         })}
       </div>
+
+      {/* Category Expenses Detail Modal */}
+      <CategoryDetailModal
+        isOpen={Boolean(selectedCategoryForDetail)}
+        onClose={() => setSelectedCategoryForDetail(null)}
+        category={selectedCategoryForDetail}
+        categories={categories}
+        transactions={effectiveAllTransactions}
+        initialPeriodFilter="THIS_MONTH"
+        onBatchMoveTransactions={onBatchMoveTransactions}
+        onEditTransaction={onEditTransaction}
+        lang={lang}
+        t={t}
+      />
     </div>
   );
 };
