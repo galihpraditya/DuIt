@@ -1170,6 +1170,8 @@ export function App() {
               <AnalyticsView
                 transactions={allTransactionsRaw === undefined ? undefined : visibleAllTransactions}
                 categories={visibleSortedCategories}
+                incomeEnabled={incomeEnabled}
+                hideNominals={hideNominals}
                 darkMode={darkMode}
                 lang={language}
                 t={t}
@@ -1300,8 +1302,14 @@ export function App() {
           <ExcelModal
             isOpen={isExcelModalOpen}
             onClose={handleCloseModals}
-            transactions={transactions}
-            categories={sortedCategories}
+            transactions={visibleTransactions}
+            categories={visibleSortedCategories}
+            incomeEnabled={incomeEnabled}
+            onAutoEnableIncome={() => {
+              setIncomeEnabled(true);
+              setIncomeTrackingEnabled(true);
+              showToast(t.incomeAutoEnabledToast, 'info');
+            }}
             lang={language}
             t={t}
             onDataChanged={(msg) => {

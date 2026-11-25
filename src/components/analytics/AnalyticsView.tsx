@@ -10,17 +10,25 @@ import {
   type PeriodOption,
   calculatePeriodIntervals,
   calculateAnalytics,
+  calculateCashFlowTrend,
   calculateSafeToSpend,
+  parseTxTime,
 } from './analyticsCalculator';
+import { calculateCashFlowSummary, filterCategoriesByType } from '../../utils/transactionHelpers';
 import { KpiCards } from './KpiCards';
+import { CashFlowCard } from './CashFlowCard';
 import { TrendChart } from './TrendChart';
 import { CategoryPieChart } from './CategoryPieChart';
 import { CategoryRankingTable } from './CategoryRankingTable';
 import { SafeToSpendCard } from './SafeToSpendCard';
 
+type AnalyticsMode = 'cashflow' | 'expense' | 'income';
+
 interface AnalyticsViewProps {
   transactions?: Transaction[];
   categories: Category[];
+  incomeEnabled?: boolean;
+  hideNominals?: boolean;
   darkMode?: boolean;
   lang?: Language;
   t: Translations;
@@ -30,15 +38,21 @@ interface AnalyticsViewProps {
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   transactions: fallbackTransactions,
   categories,
+  incomeEnabled = false,
+  hideNominals = false,
   darkMode = false,
   lang = 'id',
   t,
   onNavigateToBudget,
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('this_month');
+  const [analyticsMode, setAnalyticsMode] = useState<AnalyticsMode>('cashflow');
   const [customStartDate, setCustomStartDate] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [customEndDate, setCustomEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [chartType, setChartType] = useState<'bar' | 'area'>('bar');
+
+  const effectiveMode: AnalyticsMode = incomeEnabled ? analyticsMode : 'expense';
+  const activeBreakdownType = effectiveMode === 'income' ? 'income' : 'expense';
 
   const locale = lang === 'en' ? enLocale : idLocale;
 
@@ -56,7 +70,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const activeTransactions = fallbackTransactions ?? dexieTransactions;
 
   // 3. Kalkulasi Data Analitik secara Sinkron & Cepat (0ms) di useMemo tanpa Unmount Thrashing
-  const analyticsData = useMemo(() => {
+  const expenseAnalytics = useMemo(() => {
     if (!activeTransactions) return null;
     return calculateAnalytics(
       activeTransactions,
@@ -65,7 +79,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       previousInterval,
       periodLabel,
       selectedPeriod,
-      locale
+      locale,
+      'expense'
     );
   }, [
     activeTransactions,
@@ -77,17 +92,62 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     locale,
   ]);
 
+  const incomeAnalytics = useMemo(() => {
+    if (!activeTransactions || !incomeEnabled) return null;
+    return calculateAnalytics(
+      activeTransactions,
+      categories,
+      currentInterval,
+      previousInterval,
+      periodLabel,
+      selectedPeriod,
+      locale,
+      'income'
+    );
+  }, [
+    activeTransactions,
+    incomeEnabled,
+    categories,
+    currentInterval,
+    previousInterval,
+    periodLabel,
+    selectedPeriod,
+    locale,
+  ]);
+
+  const cashFlowSummary = useMemo(() => {
+    if (!activeTransactions || !incomeEnabled) return null;
+    const startMs = currentInterval.start.getTime();
+    const endMs = currentInterval.end.getTime();
+    const inPeriod = activeTransactions.filter((tx) => {
+      const time = parseTxTime(tx.date);
+      return time !== null && time >= startMs && time <= endMs;
+    });
+    return calculateCashFlowSummary(inPeriod);
+  }, [activeTransactions, incomeEnabled, currentInterval]);
+
+  const cashFlowTrend = useMemo(() => {
+    if (!activeTransactions || !incomeEnabled || effectiveMode !== 'cashflow') return [];
+    return calculateCashFlowTrend(activeTransactions, currentInterval, selectedPeriod, locale);
+  }, [activeTransactions, incomeEnabled, effectiveMode, currentInterval, selectedPeriod, locale]);
+
+  const analyticsData = activeBreakdownType === 'income' ? incomeAnalytics : expenseAnalytics;
+  const typedCategories = useMemo(
+    () => filterCategoriesByType(categories, activeBreakdownType),
+    [categories, activeBreakdownType]
+  );
+
   const isCurrentMonth = selectedPeriod === 'this_month';
 
   const safeData = useMemo(() => {
-    if (!analyticsData) return null;
+    if (!expenseAnalytics) return null;
     return calculateSafeToSpend(
       categories,
-      analyticsData.currentTotal,
-      analyticsData.averagePerDay,
+      expenseAnalytics.currentTotal,
+      expenseAnalytics.averagePerDay,
       isCurrentMonth ? new Date() : currentInterval.start
     );
-  }, [categories, analyticsData, isCurrentMonth, currentInterval.start]);
+  }, [categories, expenseAnalytics, isCurrentMonth, currentInterval.start]);
 
   const budgetTarget = useMemo(() => {
     if (!safeData?.hasBudget || !safeData.totalMonthlyBudget) return 0;
@@ -168,6 +228,30 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
         </div>
 
+        {/* Analytics Mode Switcher (Only when incomeEnabled) */}
+        {incomeEnabled && (
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 w-fit">
+            {[
+              { id: 'cashflow', label: t.analyticsModeCashFlow },
+              { id: 'expense', label: t.analyticsModeExpense },
+              { id: 'income', label: t.analyticsModeIncome },
+            ].map((modeTab) => (
+              <button
+                key={modeTab.id}
+                type="button"
+                onClick={() => setAnalyticsMode(modeTab.id as AnalyticsMode)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  effectiveMode === modeTab.id
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                {modeTab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Custom Range Picker */}
         {selectedPeriod === 'custom' && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
@@ -193,14 +277,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         )}
       </div>
 
-      {/* Safe-to-Spend & Forecast Burn Rate Card */}
-      <SafeToSpendCard
-        safeData={safeData}
-        isCurrentMonth={isCurrentMonth}
-        onNavigateToBudget={onNavigateToBudget}
-        lang={lang}
-        t={t}
-      />
+      {/* Cash Flow Health Summary (Surplus vs Boncos) */}
+      {incomeEnabled && cashFlowSummary && (
+        <CashFlowCard
+          summary={cashFlowSummary}
+          hideNominals={hideNominals}
+          lang={lang}
+          t={t}
+        />
+      )}
+
+      {/* Safe-to-Spend & Forecast Burn Rate Card (Always expense vs budget) */}
+      {effectiveMode !== 'income' && (
+        <SafeToSpendCard
+          safeData={safeData}
+          isCurrentMonth={isCurrentMonth}
+          onNavigateToBudget={onNavigateToBudget}
+          lang={lang}
+          t={t}
+        />
+      )}
 
       {/* KPI Cards Grid (Memoized) */}
       <KpiCards
@@ -209,6 +305,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         averagePerDay={averagePerDay}
         highestExpense={highestExpense}
         txCount={txCount}
+        variant={activeBreakdownType}
+        hideNominals={hideNominals}
         lang={lang}
         t={t}
       />
@@ -219,8 +317,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <div className="lg:col-span-7 min-w-0">
           <TrendChart
             trendData={trendData}
-            averagePerDay={averagePerDay}
-            budgetTarget={budgetTarget}
+            cashFlowData={cashFlowTrend}
+            mode={effectiveMode === 'cashflow' ? 'cashflow' : 'single'}
+            titleOverride={
+              effectiveMode === 'cashflow'
+                ? t.cashFlowTrendTitle
+                : effectiveMode === 'income'
+                ? t.incomeTrendTitle
+                : t.trendChartTitle
+            }
+            seriesLabel={effectiveMode === 'income' ? t.kpiTotalIncome : t.kpiTotalExpense}
+            averagePerDay={effectiveMode === 'cashflow' ? undefined : averagePerDay}
+            budgetTarget={effectiveMode === 'expense' ? budgetTarget : undefined}
             chartType={chartType}
             onChangeChartType={setChartType}
             darkMode={darkMode}
@@ -245,7 +353,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       <CategoryRankingTable
         categoryData={categoryData}
         currentTotal={currentTotal}
-        categories={categories}
+        categories={typedCategories}
         lang={lang}
         t={t}
       />

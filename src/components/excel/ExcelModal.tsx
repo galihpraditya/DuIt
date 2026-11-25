@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
+import { filterTransactionsByType } from '../../utils/transactionHelpers';
 import { db } from '../../db/database';
 import {
   exportTransactionsToExcel,
@@ -27,6 +28,8 @@ interface ExcelModalProps {
   onClose: () => void;
   transactions: Transaction[];
   categories: Category[];
+  incomeEnabled?: boolean;
+  onAutoEnableIncome?: () => void;
   onDataChanged: (message?: string) => void;
   lang?: Language;
   t?: Translations;
@@ -37,6 +40,8 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
   onClose,
   transactions,
   categories,
+  incomeEnabled = false,
+  onAutoEnableIncome,
   onDataChanged,
   lang = 'id',
   t = defaultTranslations[lang],
@@ -54,7 +59,14 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
       setIsProcessing(true);
       // Ambil seluruh data langsung dari Dexie storage agar export mencakup seluruh riwayat tanpa membebani RAM
       const allTransactions = await db.transactions.orderBy('date').reverse().toArray();
-      await exportTransactionsToExcel({ transactions: allTransactions, categories });
+      const exportPool = incomeEnabled
+        ? allTransactions
+        : filterTransactionsByType(allTransactions, 'expense');
+      await exportTransactionsToExcel({
+        transactions: exportPool,
+        categories,
+        includeType: incomeEnabled,
+      });
       setStatusMessage({ type: 'success', text: t.exportSuccessMsg });
     } catch {
       setStatusMessage({ type: 'error', text: t.exportFailedMsg });
@@ -85,11 +97,15 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
     if (!parsedRows) return;
     setIsProcessing(true);
     try {
+      const hasImportedIncome = parsedRows.some((r) => r.isValid && r.type === 'income');
       const count = await importTransactionsToDb(parsedRows);
       const msg = t.importSuccessMsg.replace('{count}', String(count));
       setStatusMessage({ type: 'success', text: msg });
       setParsedRows(null);
       setFileName('');
+      if (!incomeEnabled && hasImportedIncome && onAutoEnableIncome) {
+        onAutoEnableIncome();
+      }
       onDataChanged(msg);
     } catch {
       setStatusMessage({ type: 'error', text: t.importFailedMsg });
@@ -123,7 +139,13 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
     }
   };
 
-  const totalExpense = transactions.reduce((a, b) => a + b.amount, 0);
+  const totalExpense = filterTransactionsByType(transactions, 'expense').reduce((a, b) => a + b.amount, 0);
+  const totalIncome = incomeEnabled
+    ? filterTransactionsByType(transactions, 'income').reduce((a, b) => a + b.amount, 0)
+    : 0;
+  const showImportTypeColumn = Boolean(
+    incomeEnabled || parsedRows?.some((r) => r.type === 'income')
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 animate-in fade-in duration-200">
@@ -215,6 +237,14 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
                       {formatIDR(totalExpense, false, lang)}
                     </span>
                   </div>
+                  {incomeEnabled && (
+                    <div>
+                      • {t.totalIncomeLabel}:{' '}
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatIDR(totalIncome, false, lang)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-400 pt-1">
                   {t.exportSheetDesc}
@@ -264,6 +294,7 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
                       <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0">
                         <tr>
                           <th className="p-2">{t.importColDate}</th>
+                          {showImportTypeColumn && <th className="p-2">{t.importColType}</th>}
                           <th className="p-2">{t.importColCategory}</th>
                           <th className="p-2">{t.importColAmount}</th>
                           <th className="p-2">{t.importColNotes}</th>
@@ -274,8 +305,27 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
                         {parsedRows.slice(0, 15).map((row, i) => (
                           <tr key={i} className={row.isValid ? '' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
                             <td className="p-2">{formatDateIndo(row.date, 'dd/MM/yy', lang)}</td>
+                            {showImportTypeColumn && (
+                              <td className="p-2">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    row.type === 'income'
+                                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                                      : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                                  }`}
+                                >
+                                  {row.type === 'income' ? t.incomeTypeLabel : t.expenseTypeLabel}
+                                </span>
+                              </td>
+                            )}
                             <td className="p-2 font-medium">{row.categoryName}</td>
-                            <td className="p-2 font-semibold text-rose-600">{formatIDR(row.amount, false, lang)}</td>
+                            <td
+                              className={`p-2 font-semibold ${
+                                row.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                              }`}
+                            >
+                              {formatIDR(row.amount, false, lang)}
+                            </td>
                             <td className="p-2 truncate max-w-[120px]">{row.notes || '-'}</td>
                             <td className="p-2">
                               {row.isValid ? (

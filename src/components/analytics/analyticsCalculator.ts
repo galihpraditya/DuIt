@@ -1,5 +1,6 @@
-import type { Category, Transaction } from '../../types';
+import type { Category, Transaction, TransactionType } from '../../types';
 import type { Translations } from '../../constants/translations';
+import { getCategoryType, getTransactionType } from '../../utils/transactionHelpers';
 import {
   subDays,
   startOfMonth,
@@ -30,6 +31,13 @@ export interface CategoryDataEntry {
 export interface TrendDataEntry {
   label: string;
   total: number;
+}
+
+export interface CashFlowTrendEntry {
+  label: string;
+  income: number;
+  expense: number;
+  net: number;
 }
 
 export interface AnalyticsCalculatedData {
@@ -169,7 +177,8 @@ export function calculateAnalytics(
   previousInterval: { start: Date; end: Date },
   periodLabel: string,
   selectedPeriod: PeriodOption,
-  locale: any
+  locale: any,
+  transactionType: TransactionType = 'expense'
 ): AnalyticsCalculatedData {
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const start = currentInterval.start;
@@ -186,9 +195,10 @@ export function calculateAnalytics(
   const previousPeriodTxs: Transaction[] = [];
   const currentPeriodTxTimes: number[] = [];
 
-  // 1. Single pass time filtering (Numeric comparison with safe amount parsing)
+  // 1. Single pass time & type filtering (Numeric comparison with safe amount parsing)
   for (let i = 0; i < transactions.length; i++) {
     const tx = transactions[i];
+    if (getTransactionType(tx) !== transactionType) continue;
     const time = parseTxTime(tx.date);
     if (time === null) continue;
 
@@ -342,6 +352,81 @@ export function calculateAnalytics(
   };
 }
 
+function getBucketKeyForDate(d: Date, isYearly: boolean, isWeekly: boolean): string {
+  if (isYearly) return getLocalMonthKey(d);
+  if (!isWeekly) return getLocalDateKey(d);
+  return format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+}
+
+export function calculateCashFlowTrend(
+  transactions: Transaction[],
+  currentInterval: { start: Date; end: Date },
+  selectedPeriod: PeriodOption,
+  locale: any
+): CashFlowTrendEntry[] {
+  const { start, end } = currentInterval;
+  const startTime = start.getTime();
+  const endTime = end.getTime();
+  const totalDays = differenceInCalendarDays(end, start) + 1;
+  const isYearly = selectedPeriod === 'this_year' || totalDays > 365;
+  const isWeekly = !isYearly && totalDays > 70;
+
+  let buckets: { key: string; label: string; income: number; expense: number }[] = [];
+  if (isYearly) {
+    buckets = eachMonthOfInterval({ start, end }).map((m) => ({
+      key: getLocalMonthKey(m),
+      label: format(m, 'MMM', { locale }),
+      income: 0,
+      expense: 0,
+    }));
+  } else if (isWeekly) {
+    buckets = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 }).map((w) => ({
+      key: getLocalDateKey(w),
+      label: format(w, 'dd MMM', { locale }),
+      income: 0,
+      expense: 0,
+    }));
+  } else {
+    buckets = eachDayOfInterval({ start, end }).map((d) => ({
+      key: getLocalDateKey(d),
+      label: format(d, 'dd MMM', { locale }),
+      income: 0,
+      expense: 0,
+    }));
+  }
+
+  if (buckets.length === 0) return [];
+
+  const keyIndex = new Map<string, number>();
+  for (let i = 0; i < buckets.length; i++) {
+    keyIndex.set(buckets[i].key, i);
+  }
+
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    const time = parseTxTime(tx.date);
+    if (time === null || time < startTime || time > endTime) continue;
+
+    const amt = Number(tx.amount) || 0;
+    const key = getBucketKeyForDate(new Date(time), isYearly, isWeekly);
+    const idx = keyIndex.get(key);
+    if (idx !== undefined && buckets[idx]) {
+      if (getTransactionType(tx) === 'income') {
+        buckets[idx].income += amt;
+      } else {
+        buckets[idx].expense += amt;
+      }
+    }
+  }
+
+  return buckets.map(({ label, income, expense }) => ({
+    label,
+    income,
+    expense,
+    net: income - expense,
+  }));
+}
+
 /**
  * Smart Slicing for Pie/Donut Chart:
  * Groups small categories into "Lainnya" if count > maxSlices (default: 6)
@@ -404,7 +489,9 @@ export function calculateSafeToSpend(
 ): SafeToSpendData {
   let totalMonthlyBudget = 0;
   for (let i = 0; i < categories.length; i++) {
-    totalMonthlyBudget += categories[i].budgetLimit || 0;
+    if (getCategoryType(categories[i]) === 'expense') {
+      totalMonthlyBudget += categories[i].budgetLimit || 0;
+    }
   }
 
   const start = startOfMonth(referenceDate);
