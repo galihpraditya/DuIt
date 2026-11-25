@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Key,
   Download,
+  ArrowUpDown,
 } from 'lucide-react';
 import { APP_CONFIG } from '../../constants/appVersion';
 import type { Language, Translations } from '../../constants/translations';
@@ -44,6 +45,8 @@ export interface SettingsViewProps {
   onLogout: () => Promise<void>;
   onDeleteAccount: () => Promise<void>;
   onBackToTransactions: () => void;
+  incomeEnabled?: boolean;
+  onToggleIncomeEnabled?: (enabled: boolean) => void;
   transactionCount?: number;
   categoryCount?: number;
   t: Translations;
@@ -61,6 +64,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onLogout,
   onDeleteAccount,
   onBackToTransactions,
+  incomeEnabled = false,
+  onToggleIncomeEnabled,
   transactionCount = 0,
   categoryCount = 0,
   t,
@@ -341,6 +346,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <ThemeCustomizer t={t} />
         </div>
       </div>
+
+      {/* Card: Fitur Pendapatan & Arus Kas */}
+      {onToggleIncomeEnabled && (
+        <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-start space-x-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0 mt-0.5">
+                <ArrowUpDown className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {t.incomeFeatureSection}
+                  </h2>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      incomeEnabled
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {incomeEnabled ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {t.incomeFeatureDesc}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onToggleIncomeEnabled(!incomeEnabled)}
+              role="switch"
+              aria-checked={incomeEnabled}
+              aria-label={t.incomeFeatureTitle}
+              className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer focus:outline-none p-0.5 shrink-0 ${
+                incomeEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <div
+                className={`w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform ${
+                  incomeEnabled ? 'translate-x-5.5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Card 3: Notifikasi & Pengingat Harian (Daily Reminder) */}
       <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
