@@ -4,6 +4,7 @@ import { db } from '../../db/database';
 import { Target, AlertTriangle, CheckCircle2, Edit2, Calendar, ShieldCheck, ChevronRight } from 'lucide-react';
 import { CategoryDetailModal } from '../categories/CategoryDetailModal';
 import type { Category, Transaction } from '../../types';
+import { filterCategoriesByType, filterTransactionsByType } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR, getRemainingDaysInCurrentMonth } from '../../utils/formatters';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -16,6 +17,7 @@ interface BudgetManagerProps {
   onUpdateCategoryBudget: (categoryId: string, limit: number | undefined) => Promise<void>;
   onBatchMoveTransactions?: (transactionIds: string[], targetCategoryId: string) => Promise<void>;
   onEditTransaction?: (transaction: Transaction) => void;
+  incomeEnabled?: boolean;
   lang?: Language;
   t: Translations;
 }
@@ -27,6 +29,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
   onUpdateCategoryBudget,
   onBatchMoveTransactions,
   onEditTransaction,
+  incomeEnabled = false,
   lang = 'id',
   t,
 }) => {
@@ -34,10 +37,14 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
   const [editLimitStr, setEditLimitStr] = useState('');
   const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState<Category | null>(null);
 
+  const expenseCategories = useMemo(() => {
+    return filterCategoriesByType(categories, 'expense');
+  }, [categories]);
+
   // Fallback Dexie all transactions for category detail modal
   const dexieAllTxs = useLiveQuery(() => db.transactions.toArray());
   const effectiveAllTransactions = useMemo(() => {
-    return allTransactions || transactions || dexieAllTxs || [];
+    return filterTransactionsByType(allTransactions || transactions || dexieAllTxs || [], 'expense');
   }, [allTransactions, transactions, dexieAllTxs]);
 
   // Current month interval
@@ -60,8 +67,8 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
     return db.transactions.where('date').between(start, end, true, true).toArray();
   }, [monthInterval]);
 
-  // Filter current month transactions (prioritaskan hasil Dexie Indexed query)
-  const currentMonthTransactions = useMemo(() => {
+  // Raw current month transactions (all types)
+  const rawCurrentMonthTransactions = useMemo(() => {
     if (dexieMonthTxs !== undefined) return dexieMonthTxs;
     if (!transactions) return [];
     return transactions.filter((tx) => {
@@ -74,6 +81,19 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
     });
   }, [dexieMonthTxs, transactions, monthInterval]);
 
+  // Filter strictly to expense transactions for budget utilization
+  const currentMonthTransactions = useMemo(() => {
+    return filterTransactionsByType(rawCurrentMonthTransactions, 'expense');
+  }, [rawCurrentMonthTransactions]);
+
+  const currentMonthIncome = useMemo(() => {
+    if (!incomeEnabled) return 0;
+    return filterTransactionsByType(rawCurrentMonthTransactions, 'income').reduce(
+      (acc, tx) => acc + tx.amount,
+      0
+    );
+  }, [rawCurrentMonthTransactions, incomeEnabled]);
+
   // Compute spending per category this month
   const categorySpendingThisMonth = useMemo(() => {
     const map = new Map<string, number>();
@@ -85,8 +105,8 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
 
   // Total budget & spending
   const totalBudget = useMemo(() => {
-    return categories.reduce((acc, c) => acc + (c.budgetLimit || 0), 0);
-  }, [categories]);
+    return expenseCategories.reduce((acc, c) => acc + (c.budgetLimit || 0), 0);
+  }, [expenseCategories]);
 
   const totalSpentThisMonth = useMemo(() => {
     return currentMonthTransactions.reduce((acc, tx) => acc + tx.amount, 0);
@@ -124,6 +144,11 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5">
               {formatIDR(totalSpentThisMonth, false, lang)}
             </div>
+            {incomeEnabled && currentMonthIncome > 0 && (
+              <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                {t.totalIncomeLabel}: {formatIDR(currentMonthIncome, false, lang)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -186,7 +211,7 @@ export const BudgetManager: React.FC<BudgetManagerProps> = ({
 
       {/* Categories Budget Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {categories.map((cat) => {
+        {expenseCategories.map((cat) => {
           const spent = categorySpendingThisMonth.get(cat.id) || 0;
           const limit = cat.budgetLimit || 0;
           const pct = limit > 0 ? (spent / limit) * 100 : 0;

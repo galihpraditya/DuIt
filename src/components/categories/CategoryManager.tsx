@@ -14,7 +14,12 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import type { Category, CategorySortMode, Transaction } from '../../types';
+import type { Category, CategorySortMode, Transaction, TransactionType } from '../../types';
+import {
+  getCategoryType,
+  filterCategoriesByType,
+  filterTransactionsByType,
+} from '../../utils/transactionHelpers';
 import { DynamicIcon, IconPicker } from '../common/IconPicker';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { CategoryDetailModal } from './CategoryDetailModal';
@@ -39,6 +44,7 @@ interface CategoryManagerProps {
   sortMode?: CategorySortMode;
   onChangeSortMode?: (mode: CategorySortMode) => void;
   onReorderCategories?: (reorderedCategories: Category[]) => Promise<void>;
+  incomeEnabled?: boolean;
   hideNominals?: boolean;
   lang?: Language;
   t: Translations;
@@ -72,12 +78,33 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   sortMode,
   onChangeSortMode,
   onReorderCategories,
+  incomeEnabled = false,
   hideNominals = false,
   lang = 'id',
   t,
 }) => {
   const [internalSortMode, setInternalSortMode] = useState<CategorySortMode>(() => getStoredCategorySortMode());
   const activeSortMode = sortMode ?? internalSortMode;
+  const [activeTypeTab, setActiveTypeTab] = useState<TransactionType>('expense');
+
+  const effectiveTypeTab: TransactionType = incomeEnabled ? activeTypeTab : 'expense';
+  const typedCategories = useMemo(
+    () => filterCategoriesByType(categories, effectiveTypeTab),
+    [categories, effectiveTypeTab]
+  );
+  const typedTransactions = useMemo(
+    () => filterTransactionsByType(transactions, effectiveTypeTab),
+    [transactions, effectiveTypeTab]
+  );
+
+  const expenseCategoriesCount = useMemo(
+    () => filterCategoriesByType(categories, 'expense').length,
+    [categories]
+  );
+  const incomeCategoriesCount = useMemo(
+    () => filterCategoriesByType(categories, 'income').length,
+    [categories]
+  );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -87,14 +114,15 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('Utensils');
   const [color, setColor] = useState('#f97316');
+  const [catType, setCatType] = useState<TransactionType>('expense');
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
   const sortedCategories = useMemo(() => {
-    return sortCategories(categories, activeSortMode, transactions);
-  }, [categories, activeSortMode, transactions]);
+    return sortCategories(typedCategories, activeSortMode, typedTransactions);
+  }, [typedCategories, activeSortMode, typedTransactions]);
 
   const handleSortChange = async (newMode: CategorySortMode) => {
     if (newMode === 'manual') {
@@ -132,19 +160,22 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const openAddModal = () => {
     setEditingCategory(null);
     setName('');
-    setIcon('Utensils');
-    setColor('#f97316');
+    setCatType(effectiveTypeTab);
+    setIcon(effectiveTypeTab === 'income' ? 'Briefcase' : 'Utensils');
+    setColor(effectiveTypeTab === 'income' ? '#10b981' : '#f97316');
     setBudgetLimitStr('');
     setError('');
     setIsModalOpen(true);
   };
 
   const openEditModal = (cat: Category) => {
+    const typeOfCat = getCategoryType(cat);
     setEditingCategory(cat);
     setName(cat.name);
     setIcon(cat.icon);
     setColor(cat.color);
-    setBudgetLimitStr(cat.budgetLimit ? cat.budgetLimit.toString() : '');
+    setCatType(typeOfCat);
+    setBudgetLimitStr(typeOfCat === 'expense' && cat.budgetLimit ? cat.budgetLimit.toString() : '');
     setError('');
     setIsModalOpen(true);
   };
@@ -159,14 +190,15 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     try {
       setIsSubmitting(true);
       const cleanStr = budgetLimitStr.replace(/[^0-9]/g, '');
-      const budgetLimit = cleanStr ? parseInt(cleanStr, 10) : undefined;
+      const budgetLimit = catType === 'expense' && cleanStr ? parseInt(cleanStr, 10) : undefined;
       await onSaveCategory(
         {
           name: name.trim(),
           icon,
           color,
+          type: catType,
           budgetLimit: isNaN(budgetLimit as number) ? undefined : budgetLimit,
-          order: editingCategory ? editingCategory.order : categories.length,
+          order: editingCategory ? editingCategory.order : typedCategories.length,
         },
         editingCategory?.id
       );
@@ -180,11 +212,11 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   const categorySpendingMap = useMemo(() => {
     const map = new Map<string, number>();
-    transactions.forEach((tx) => {
+    typedTransactions.forEach((tx) => {
       map.set(tx.categoryId, (map.get(tx.categoryId) || 0) + tx.amount);
     });
     return map;
-  }, [transactions]);
+  }, [typedTransactions]);
 
   return (
     <div className="space-y-4">
@@ -197,10 +229,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           </div>
           <div className="min-w-0 flex-1 flex items-center space-x-2">
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-              {t.categoryHeaderTitle}
+              {incomeEnabled
+                ? effectiveTypeTab === 'income'
+                  ? (lang === 'en' ? 'Income Categories' : 'Kategori Pendapatan')
+                  : t.categoryHeaderTitle
+                : t.categoryHeaderTitle}
             </h2>
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-              {categories.length}
+              {sortedCategories.length}
             </span>
           </div>
         </div>
@@ -243,6 +279,34 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Expense / Income Type Tabs (Only when incomeEnabled) */}
+      {incomeEnabled && (
+        <div className="inline-flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70">
+          <button
+            type="button"
+            onClick={() => setActiveTypeTab('expense')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              effectiveTypeTab === 'expense'
+                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {t.expenseCategoriesTab} ({expenseCategoriesCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTypeTab('income')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              effectiveTypeTab === 'income'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {t.incomeCategoriesTab} ({incomeCategoriesCount})
+          </button>
+        </div>
+      )}
 
       {/* Manual Reordering Hint (Only when in manual mode) */}
       {activeSortMode === 'manual' && (
@@ -351,28 +415,46 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 </div>
               </div>
 
-              {/* Bottom Row: Spending Metric & Budget Limit */}
+              {/* Bottom Row: Spending/Income Metric & Budget Limit */}
               <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs gap-2">
                 <div className="min-w-0">
-                  <span className="text-slate-400 text-[11px] block">{lang === 'en' ? 'Total spent' : 'Total terpakai'}</span>
-                  <span className="font-bold text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
+                  <span className="text-slate-400 text-[11px] block">
+                    {effectiveTypeTab === 'income'
+                      ? t.totalIncomeEarned
+                      : lang === 'en'
+                      ? 'Total spent'
+                      : 'Total terpakai'}
+                  </span>
+                  <span
+                    className={`font-bold text-xs sm:text-sm ${
+                      effectiveTypeTab === 'income'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
                     {formatIDR(totalSpent, false, lang, hideNominals)}
                   </span>
                 </div>
 
-                {cat.budgetLimit ? (
-                  <div className="text-right min-w-0">
-                    <span className="text-slate-400 text-[11px] block">{t.budgetLimitPerMonth}</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
-                      {formatIDR(cat.budgetLimit, false, lang, hideNominals)}
-                    </span>
-                  </div>
+                {effectiveTypeTab === 'expense' ? (
+                  cat.budgetLimit ? (
+                    <div className="text-right min-w-0">
+                      <span className="text-slate-400 text-[11px] block">{t.budgetLimitPerMonth}</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                        {formatIDR(cat.budgetLimit, false, lang, hideNominals)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-right">
+                      <span className="text-[11px] text-slate-400 italic">
+                        {lang === 'en' ? 'No limit' : 'Tanpa limit'}
+                      </span>
+                    </div>
+                  )
                 ) : (
-                  <div className="text-right">
-                    <span className="text-[11px] text-slate-400 italic">
-                      {lang === 'en' ? 'No limit' : 'Tanpa limit'}
-                    </span>
-                  </div>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                    {t.incomeTypeLabel}
+                  </span>
                 )}
               </div>
             </div>
@@ -487,7 +569,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                   <IconPicker selectedIcon={icon} onSelectIcon={setIcon} />
                 </div>
 
-                {/* Optional Budget Limit */}
+                {/* Optional Budget Limit (Expense categories only) */}
+                {catType === 'expense' && (
                 <div>
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
@@ -509,6 +592,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                     />
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Sticky Footer Action Buttons */}

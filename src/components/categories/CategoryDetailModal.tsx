@@ -17,6 +17,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
+import { getCategoryType } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR } from '../../utils/formatters';
 import { format, parseISO } from 'date-fns';
@@ -127,10 +128,11 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
     return displayedTxs.reduce((acc, tx) => acc + tx.amount, 0);
   }, [displayedTxs]);
 
-  // Destination categories (excluding current category)
+  // Destination categories (excluding current category, restricted to same transaction type)
   const availableTargetCategories = useMemo(() => {
     if (!category) return [];
-    return categories.filter((c) => c.id !== category.id);
+    const currentType = getCategoryType(category);
+    return categories.filter((c) => c.id !== category.id && getCategoryType(c) === currentType);
   }, [categories, category]);
 
   if (!isOpen || !category) return null;
@@ -216,7 +218,14 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
                     <span>
                       Total:{' '}
-                      <strong className="text-slate-900 dark:text-slate-100 font-bold">
+                      <strong
+                        className={`font-bold ${
+                          getCategoryType(category) === 'income'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-slate-900 dark:text-slate-100'
+                        }`}
+                      >
+                        {getCategoryType(category) === 'income' ? '+' : ''}
                         {formatIDR(displayedTotal, false, lang)}
                       </strong>
                     </span>
