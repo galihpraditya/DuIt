@@ -1,9 +1,12 @@
+export type TransactionType = 'expense' | 'income';
+
 export interface Category {
   id: string;
   name: string;
   icon: string;
   color: string;
-  budgetLimit?: number; // Optional monthly limit in IDR
+  type?: TransactionType; // Defaults to 'expense' when omitted for backward compatibility
+  budgetLimit?: number; // Optional monthly limit in IDR (expense categories only)
   isDefault?: boolean;
   order?: number; // Sorting index for manual/custom ordering
   createdAt: string;
@@ -24,6 +27,7 @@ export interface Transaction {
   amount: number;
   date: string; // ISO String (YYYY-MM-DDTHH:mm:ss)
   categoryId: string;
+  type?: TransactionType; // Defaults to 'expense' when omitted for backward compatibility
   notes?: string;
   paymentMethod?: PaymentMethodType;
   tags?: string[];
