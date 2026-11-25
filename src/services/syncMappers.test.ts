@@ -85,6 +85,55 @@ describe('syncMappers', () => {
     assert.equal(findSameTypeCategoryMatch(localIncomeBonus, cloudCats), 'cloud-inc');
   });
 
+  it('preserves local income type when cloud row omits type (un-migrated Supabase schema)', () => {
+    const localIncomeCat: Category = {
+      id: 'cat-custom-inc',
+      name: 'Side Hustle',
+      icon: 'Laptop',
+      color: '#10b981',
+      type: 'income',
+      createdAt: '2026-11-26T00:00:00Z',
+    };
+    const unmigratedCloudCat = {
+      id: 'cat-custom-inc',
+      name: 'Side Hustle',
+      icon: 'Laptop',
+      color: '#10b981',
+      budget_limit: 0,
+      created_at: '2026-11-26T00:00:00Z',
+    };
+    assert.equal(mapCloudCategoryToLocal(unmigratedCloudCat, localIncomeCat).type, 'income');
+
+    const defaultIncFromCloud = mapCloudCategoryToLocal(
+      { id: 'cat-inc-salary', name: 'Gaji', icon: 'Briefcase', color: '#10b981' },
+      undefined
+    );
+    assert.equal(defaultIncFromCloud.type, 'income');
+
+    const localIncomeTx: Transaction = {
+      id: 'tx-inc-1',
+      amount: 5000000,
+      date: '2026-11-26T10:00:00Z',
+      categoryId: 'cat-custom-inc',
+      type: 'income',
+      createdAt: '2026-11-26T10:00:00Z',
+    };
+    const unmigratedCloudTx = {
+      id: 'tx-inc-1',
+      amount: 5000000,
+      date: '2026-11-26T10:00:00Z',
+      category_id: 'cat-custom-inc',
+    };
+    assert.equal(
+      mapCloudTransactionToLocal(unmigratedCloudTx, 'cat-custom-inc', localIncomeTx).type,
+      'income'
+    );
+    assert.equal(
+      mapCloudTransactionToLocal(unmigratedCloudTx, 'cat-custom-inc', undefined, 'income').type,
+      'income'
+    );
+  });
+
   it('includes normalized type in cloud payloads', () => {
     const cat: Category = {
       id: 'cat-inc-salary',

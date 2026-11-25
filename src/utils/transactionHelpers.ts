@@ -106,3 +106,35 @@ export function calculateCashFlowSummary(transactions: Transaction[]): CashFlowS
     savingRatePct,
   };
 }
+
+/**
+ * Resolves a safe same-type destination category ID for batch moving transactions,
+ * discarding stale IDs from another transaction type.
+ */
+export function resolveBatchMoveTargetCategory(
+  currentTargetId: string,
+  sourceCategory: Pick<Category, 'id' | 'type'> | null | undefined,
+  allCategories: Category[]
+): string {
+  if (!sourceCategory) return '';
+  const sourceType = getCategoryType(sourceCategory);
+  const validTargets = allCategories.filter(
+    (c) => c.id !== sourceCategory.id && getCategoryType(c) === sourceType
+  );
+  if (validTargets.some((c) => c.id === currentTargetId)) {
+    return currentTargetId;
+  }
+  return validTargets[0]?.id || '';
+}
+
+/**
+ * Resolves an active category filter ID against currently visible categories,
+ * resetting stale IDs (e.g. an income category when income tracking is turned off) to 'ALL'.
+ */
+export function resolveActiveCategoryFilter(
+  selectedCategoryId: string,
+  visibleCategories: Category[]
+): string {
+  if (selectedCategoryId === 'ALL') return 'ALL';
+  return visibleCategories.some((c) => c.id === selectedCategoryId) ? selectedCategoryId : 'ALL';
+}

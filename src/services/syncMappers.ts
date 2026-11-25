@@ -11,8 +11,10 @@ const LEGACY_DUMMY_BUDGET_MAP: Record<string, number> = {
   'cat-education': 500000,
 };
 
-function normalizeType(rawType: unknown): TransactionType {
-  return rawType === 'income' ? 'income' : 'expense';
+function normalizeType(rawType: unknown): TransactionType | undefined {
+  if (rawType === 'income') return 'income';
+  if (rawType === 'expense') return 'expense';
+  return undefined;
 }
 
 export function mapCloudCategoryToLocal(
@@ -22,13 +24,18 @@ export function mapCloudCategoryToLocal(
 ): Category {
   const rawLimit = cc.budget_limit ? Number(cc.budget_limit) : undefined;
   const isLegacyDummy = rawLimit !== undefined && LEGACY_DUMMY_BUDGET_MAP[cc.id] === rawLimit;
+  const explicitType = normalizeType(cc.type);
+  const fallbackType: TransactionType =
+    localExisting?.type === 'income' || (typeof cc.id === 'string' && cc.id.startsWith('cat-inc-'))
+      ? 'income'
+      : 'expense';
 
   return {
     id: cc.id,
     name: cc.name || 'Kategori',
     icon: cc.icon || 'Tag',
     color: cc.color || '#64748b',
-    type: normalizeType(cc.type),
+    type: explicitType ?? fallbackType,
     budgetLimit: isLegacyDummy ? undefined : rawLimit,
     isDefault: Boolean(cc.is_default),
     order: typeof cc.order_index === 'number' ? cc.order_index : (localExisting?.order ?? 0),
@@ -39,14 +46,26 @@ export function mapCloudCategoryToLocal(
 export function mapCloudTransactionToLocal(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  effectiveCatId: string
+  effectiveCatId: string,
+  localExisting?: Transaction,
+  resolvedCategoryType?: TransactionType
 ): Transaction {
+  const explicitType = normalizeType(ctx.type);
+  const fallbackType: TransactionType =
+    localExisting?.type === 'income'
+      ? 'income'
+      : localExisting?.type === 'expense'
+      ? 'expense'
+      : resolvedCategoryType === 'income'
+      ? 'income'
+      : 'expense';
+
   return {
     id: ctx.id,
     amount: Number(ctx.amount) || 0,
     date: ctx.date || new Date().toISOString(),
     categoryId: effectiveCatId,
-    type: normalizeType(ctx.type),
+    type: explicitType ?? fallbackType,
     notes: ctx.notes || undefined,
     paymentMethod: ctx.payment_method || undefined,
     tags: Array.isArray(ctx.tags) ? ctx.tags : undefined,
@@ -64,7 +83,9 @@ export function findSameTypeCategoryMatch(
 
   const match = cloudCats.find((cc) => {
     const cloudName = (cc.name || '').trim().toLowerCase();
-    return cloudName === normName && normalizeType(cc.type) === localType;
+    const cloudType =
+      normalizeType(cc.type) ?? (cc.id.startsWith('cat-inc-') ? 'income' : 'expense');
+    return cloudName === normName && cloudType === localType;
   });
 
   return match?.id;

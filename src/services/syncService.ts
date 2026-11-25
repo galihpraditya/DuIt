@@ -9,7 +9,7 @@ import {
   mapLocalCategoryToCloudPayload,
   mapLocalTransactionToCloudPayload,
 } from './syncMappers';
-import { getTransactionType } from '../utils/transactionHelpers';
+import { getCategoryType, getTransactionType } from '../utils/transactionHelpers';
 
 let ongoingSync: Promise<{ success: boolean; error?: string }> | null = null;
 
@@ -38,6 +38,17 @@ export function markCategoryDeleted(id: string) {
     localStorage.setItem(DELETED_CATS_KEY, JSON.stringify(Array.from(set)));
   } catch (e) {
     console.warn('[SyncService] Failed to mark category as deleted in localStorage:', e);
+  }
+}
+
+export function unmarkCategoryDeleted(id: string) {
+  try {
+    const set = getDeletedCategoryIds();
+    if (set.delete(id)) {
+      localStorage.setItem(DELETED_CATS_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch (e) {
+    console.warn('[SyncService] Failed to unmark category as deleted in localStorage:', e);
   }
 }
 
@@ -196,30 +207,48 @@ async function upsertSingleChunk(
   ) {
     console.warn(`[SyncService] FK constraint error (23503) on ${table}. Self-healing orphaned category IDs...`);
 
-    // Pastikan kategori jangkar 'cat-others' telah terdaftar di Supabase untuk user ini
+    // Pastikan kategori jangkar 'cat-others' & 'cat-inc-others' terdaftar di Supabase untuk user ini
     const sampleUserId = chunk[0]?.user_id;
+    const hasIncomeItems = chunk.some((item) => item?.type === 'income');
     if (sampleUserId) {
       try {
-        let anchorCat: any = {
-          id: 'cat-others',
-          user_id: sampleUserId,
-          name: 'Lain-lain',
-          icon: 'CircleEllipsis',
-          color: '#64748b',
-          budget_limit: 0,
-          is_default: true,
-          created_at: new Date().toISOString(),
-        };
-        anchorCat = sanitizePayload('categories', [anchorCat])[0];
-        await supabase.from('categories').upsert([anchorCat], { onConflict: conflictMode });
+        const anchors: any[] = [
+          {
+            id: 'cat-others',
+            user_id: sampleUserId,
+            name: 'Lain-lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'expense',
+            budget_limit: 0,
+            is_default: true,
+            created_at: new Date().toISOString(),
+          },
+        ];
+        if (hasIncomeItems) {
+          anchors.push({
+            id: 'cat-inc-others',
+            user_id: sampleUserId,
+            name: 'Pemasukan Lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'income',
+            budget_limit: 0,
+            is_default: true,
+            created_at: new Date().toISOString(),
+          });
+        }
+        const sanitizedAnchors = sanitizePayload('categories', anchors);
+        await supabase.from('categories').upsert(sanitizedAnchors, { onConflict: conflictMode });
       } catch (anchorErr) {
-        console.warn('[SyncService] Failed to auto-seed anchor cat-others in cloud:', anchorErr);
+        console.warn('[SyncService] Failed to auto-seed anchor categories in cloud:', anchorErr);
       }
     }
 
     const healedChunk = chunk.map((item) => ({
       ...item,
-      category_id: table === 'budgets' ? null : 'cat-others',
+      category_id:
+        table === 'budgets' ? null : item?.type === 'income' ? 'cat-inc-others' : 'cat-others',
     }));
 
     const healedResult = await doUpsert(healedChunk, conflictMode);
@@ -240,6 +269,7 @@ async function upsertSingleChunk(
 
 export const syncService = {
   markCategoryDeleted,
+  unmarkCategoryDeleted,
   getDeletedCategoryIds,
 
   /**
@@ -312,6 +342,21 @@ export const syncService = {
       };
       await db.categories.put(defaultOthers);
       localCats.push(defaultOthers);
+    }
+    const hasIncOthers = localCats.some((c) => c.id === 'cat-inc-others');
+    if (!hasIncOthers && !deletedIds.has('cat-inc-others')) {
+      const defaultIncOthers: Category = {
+        id: 'cat-inc-others',
+        name: 'Pemasukan Lain',
+        icon: 'CircleEllipsis',
+        color: '#64748b',
+        type: 'income',
+        isDefault: true,
+        order: 999,
+        createdAt: new Date().toISOString(),
+      };
+      await db.categories.put(defaultIncOthers);
+      localCats.push(defaultIncOthers);
     }
 
     if (cloudCats && cloudCats.length > 0) {
@@ -425,18 +470,27 @@ export const syncService = {
     // Kumpulan kategori valid (lokal) untuk memastikan transaksi tidak mereferensi kategori kosong
     const availableCats = await db.categories.toArray();
     const validCatIds = new Set(availableCats.map((c) => c.id));
+    const catTypeMap = new Map(availableCats.map((c) => [c.id, getCategoryType(c)]));
+    const localTxMap = new Map(localTxs.map((l) => [l.id, l]));
     const fallbackExpenseCatId = validCatIds.has('cat-others') ? 'cat-others' : (availableCats[0]?.id || 'cat-others');
     const fallbackIncomeCatId = validCatIds.has('cat-inc-others') ? 'cat-inc-others' : fallbackExpenseCatId;
 
     if (cloudTxs && cloudTxs.length > 0) {
       // 1. Simpan/perbarui data dari cloud ke lokal secara atomic dalam 1 transaksi IndexedDB
       const txObjects: Transaction[] = cloudTxs.map((ctx) => {
-        const fallbackForType = ctx.type === 'income' ? fallbackIncomeCatId : fallbackExpenseCatId;
+        const localExisting = localTxMap.get(ctx.id);
+        const inferredIsIncome = ctx.type === 'income' || (ctx.type == null && localExisting?.type === 'income');
+        const fallbackForType = inferredIsIncome ? fallbackIncomeCatId : fallbackExpenseCatId;
         const effectiveCatId = ctx.category_id && validCatIds.has(ctx.category_id)
           ? ctx.category_id
           : fallbackForType;
 
-        return mapCloudTransactionToLocal(ctx, effectiveCatId);
+        return mapCloudTransactionToLocal(
+          ctx,
+          effectiveCatId,
+          localExisting,
+          catTypeMap.get(effectiveCatId)
+        );
       });
       await db.transactions.bulkPut(txObjects);
 

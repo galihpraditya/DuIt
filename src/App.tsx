@@ -703,11 +703,22 @@ export function App() {
     );
 
     const anchorId = deletingType === 'income' ? 'cat-inc-others' : 'cat-others';
+    if (id === anchorId && remainingSameType.length === 0) {
+      showToast(
+        language === 'id'
+          ? 'Kategori bawaan terakhir tidak dapat dihapus.'
+          : 'The last default fallback category cannot be deleted.',
+        'info'
+      );
+      return;
+    }
+
     let fallbackCatId =
       remainingSameType.find((c) => c.id === anchorId)?.id || remainingSameType[0]?.id;
 
+    let createdAnchor: Category | null = null;
     if (!fallbackCatId) {
-      const defaultAnchor: Category =
+      createdAnchor =
         deletingType === 'income'
           ? {
               id: 'cat-inc-others',
@@ -727,8 +738,9 @@ export function App() {
               isDefault: true,
               createdAt: new Date().toISOString(),
             };
-      await db.categories.put(defaultAnchor);
-      fallbackCatId = defaultAnchor.id;
+      syncService.unmarkCategoryDeleted(createdAnchor.id);
+      await db.categories.put(createdAnchor);
+      fallbackCatId = createdAnchor.id;
     }
 
     // 1. Re-route related transactions locally in Dexie
@@ -746,8 +758,11 @@ export function App() {
     // 3. Delete category budget entries locally in Dexie
     await db.budgets.where('categoryId').equals(id).delete();
 
-    // 4. Sync re-routed data to cloud BEFORE deleting category to prevent FK violation & orphaned rows
+    // 4. Sync new anchor & re-routed data to cloud BEFORE deleting category to prevent FK violation & orphaned rows
     if (currentUser?.id) {
+      if (createdAnchor) {
+        await syncService.pushCategory(createdAnchor, currentUser.id);
+      }
       const updatedTxs = await db.transactions.where('id').anyOf(relatedTxs.map((t) => t.id)).toArray();
       for (const tx of updatedTxs) {
         await syncService.pushTransaction(tx, currentUser.id);

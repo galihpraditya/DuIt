@@ -9,6 +9,8 @@ import {
   calculateCashFlowSummary,
   isIncomeTrackingEnabled,
   setIncomeTrackingEnabled,
+  resolveBatchMoveTargetCategory,
+  resolveActiveCategoryFilter,
 } from './transactionHelpers';
 import type { Category, Transaction } from '../types';
 
@@ -128,5 +130,24 @@ describe('transactionHelpers', () => {
     assert.equal(isIncomeTrackingEnabled(mockStorage), true);
     setIncomeTrackingEnabled(false, mockStorage);
     assert.equal(isIncomeTrackingEnabled(mockStorage), false);
+  });
+
+  it('prevents cross-type stale target category in batch move and stale filter in list', () => {
+    const expCat = makeCat({ id: 'cat-food', type: 'expense' });
+    const expCat2 = makeCat({ id: 'cat-transport', type: 'expense' });
+    const incCat = makeCat({ id: 'cat-inc-salary', type: 'income' });
+    const incCat2 = makeCat({ id: 'cat-inc-bonus', type: 'income' });
+    const allCats = [expCat, expCat2, incCat, incCat2];
+
+    // Stale expense target 'cat-food' when moving from income category 'cat-inc-salary' must resolve to 'cat-inc-bonus'
+    assert.equal(resolveBatchMoveTargetCategory('cat-food', incCat, allCats), 'cat-inc-bonus');
+    // Valid same-type target is preserved
+    assert.equal(resolveBatchMoveTargetCategory('cat-inc-bonus', incCat, allCats), 'cat-inc-bonus');
+    // No other same-type category returns empty string
+    assert.equal(resolveBatchMoveTargetCategory('cat-food', incCat, [expCat, incCat]), '');
+
+    // Stale income category filter when only expense categories are visible falls back to 'ALL'
+    assert.equal(resolveActiveCategoryFilter('cat-inc-salary', [expCat, expCat2]), 'ALL');
+    assert.equal(resolveActiveCategoryFilter('cat-food', [expCat, expCat2]), 'cat-food');
   });
 });

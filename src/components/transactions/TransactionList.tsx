@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Search, Filter, ArrowDownRight, ArrowUpRight, Calendar as CalendarIcon, Tag, RotateCcw, CalendarDays, Smartphone, Banknote, Landmark, CreditCard, Plus } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType, TransactionType } from '../../types';
-import { getTransactionType, getCategoryType } from '../../utils/transactionHelpers';
+import { getTransactionType, getCategoryType, resolveActiveCategoryFilter } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR, formatRelativeDateIndo, formatTimeOnly, getMonthWeeks } from '../../utils/formatters';
 import { format, parseISO, isWithinInterval } from 'date-fns';
@@ -67,10 +67,28 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
     return categories.filter((c) => getCategoryType(c) === effectiveTypeFilter);
   }, [categories, effectiveTypeFilter]);
 
+  const activeCategoryFilter = useMemo(
+    () => resolveActiveCategoryFilter(selectedCategoryFilter, visibleCategoriesForDropdown),
+    [selectedCategoryFilter, visibleCategoriesForDropdown]
+  );
+
+  // Sync stale type/category filters when income mode is toggled off or category list changes
+  useEffect(() => {
+    if (!incomeEnabled && selectedTypeFilter !== 'ALL') {
+      setSelectedTypeFilter('ALL');
+    }
+  }, [incomeEnabled, selectedTypeFilter]);
+
+  useEffect(() => {
+    if (selectedCategoryFilter !== 'ALL' && activeCategoryFilter === 'ALL') {
+      setSelectedCategoryFilter('ALL');
+    }
+  }, [selectedCategoryFilter, activeCategoryFilter]);
+
   // Reset pagination when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [searchQuery, selectedCategoryFilter, selectedTypeFilter, selectedWeekFilter, selectedMonthFilter]);
+  }, [searchQuery, activeCategoryFilter, selectedTypeFilter, selectedWeekFilter, selectedMonthFilter]);
 
   // Keyboard shortcut listener: Press '/' to focus search input
   useEffect(() => {
@@ -121,7 +139,7 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
       // 2. Type & Category filter
       const txType = getTransactionType(tx);
       const matchesType = effectiveTypeFilter === 'ALL' || txType === effectiveTypeFilter;
-      const matchesCategory = selectedCategoryFilter === 'ALL' || tx.categoryId === selectedCategoryFilter;
+      const matchesCategory = activeCategoryFilter === 'ALL' || tx.categoryId === activeCategoryFilter;
 
       // 3. Month filter
       let matchesMonth = true;
@@ -156,7 +174,7 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
     transactions,
     searchQuery,
     effectiveTypeFilter,
-    selectedCategoryFilter,
+    activeCategoryFilter,
     selectedMonthFilter,
     selectedWeekFilter,
     availableWeeks,
@@ -237,7 +255,7 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
   const hasActiveFilters =
     searchQuery !== '' ||
     (incomeEnabled && selectedTypeFilter !== 'ALL') ||
-    selectedCategoryFilter !== 'ALL' ||
+    activeCategoryFilter !== 'ALL' ||
     (!isAllTime && selectedWeekFilter !== 'ALL');
 
   const handleResetFilters = () => {
@@ -304,7 +322,7 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
 
           {/* Category Dropdown */}
           <select
-            value={selectedCategoryFilter}
+            value={activeCategoryFilter}
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
             className="shrink-0 text-xs py-1.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 focus:outline-none cursor-pointer"
           >

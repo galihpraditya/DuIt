@@ -17,7 +17,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import type { Category, Transaction, PaymentMethodType } from '../../types';
-import { getCategoryType } from '../../utils/transactionHelpers';
+import { getCategoryType, resolveBatchMoveTargetCategory } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import { formatIDR } from '../../utils/formatters';
 import { format, parseISO } from 'date-fns';
@@ -79,6 +79,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
       setSearchQuery('');
       setSelectedIds(new Set());
       setIsMovePickerOpen(false);
+      setTargetCatId('');
       setMoveError(null);
     }
   }, [isOpen, initialPeriodFilter, category?.id]);
@@ -162,16 +163,14 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
     if (specificId) {
       setSelectedIds(new Set([specificId]));
     }
-    if (availableTargetCategories.length > 0) {
-      if (!targetCatId || targetCatId === category.id) {
-        setTargetCatId(availableTargetCategories[0].id);
-      }
-    }
+    const safeTargetId = resolveBatchMoveTargetCategory(targetCatId, category, categories);
+    setTargetCatId(safeTargetId);
     setIsMovePickerOpen(true);
   };
 
   const handleConfirmBatchMove = async () => {
     if (!targetCatId || selectedIds.size === 0 || !onBatchMoveTransactions) return;
+    if (!availableTargetCategories.some((c) => c.id === targetCatId)) return;
     try {
       setIsSubmittingMove(true);
       setMoveError(null);
