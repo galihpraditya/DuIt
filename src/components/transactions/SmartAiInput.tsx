@@ -7,6 +7,7 @@ import type { Translations } from '../../constants/translations';
 interface SmartAiInputProps {
   categories: Category[];
   onParsed: (results: ParsedTransactionResult[]) => void;
+  allowIncome?: boolean;
   t: Translations;
   language?: string;
 }
@@ -14,6 +15,7 @@ interface SmartAiInputProps {
 export const SmartAiInput: React.FC<SmartAiInputProps> = ({
   categories,
   onParsed,
+  allowIncome = false,
   t,
   language = 'id',
 }) => {
@@ -100,7 +102,8 @@ export const SmartAiInput: React.FC<SmartAiInputProps> = ({
     try {
       const results = await aiService.parseNaturalTransactions(
         text,
-        categories.map((c) => ({ id: c.id, name: c.name, isDefault: c.isDefault }))
+        categories.map((c) => ({ id: c.id, name: c.name, isDefault: c.isDefault, type: c.type })),
+        { allowIncome }
       );
 
       if (results && results.length > 0) {

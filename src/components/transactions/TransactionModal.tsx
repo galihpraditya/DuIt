@@ -14,8 +14,11 @@ import {
   RotateCcw,
   Trash2,
   ArrowLeft,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
-import type { Category, Transaction, PaymentMethodType } from '../../types';
+import type { Category, Transaction, PaymentMethodType, TransactionType } from '../../types';
+import { getTransactionType, filterCategoriesByType } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { format } from 'date-fns';
@@ -31,6 +34,7 @@ interface TransactionModalProps {
   onDelete?: (id: string) => Promise<void>;
   categories: Category[];
   initialData?: Transaction | null;
+  incomeEnabled?: boolean;
   onOpenCategoryManager?: () => void;
   lang?: Language;
   t: Translations;
@@ -45,11 +49,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSaveBatch,
   categories,
   initialData,
+  incomeEnabled = false,
   onOpenCategoryManager,
   onDelete,
   lang = 'id',
   t,
 }) => {
+  const [txType, setTxType] = useState<TransactionType>('expense');
   const [amountStr, setAmountStr] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [dateStr, setDateStr] = useState(toLocalInputValue(new Date()));
@@ -59,6 +65,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [error, setError] = useState('');
+
+  const showTypeSwitcher = incomeEnabled || initialData?.type === 'income';
+  const filteredCategories = React.useMemo(
+    () => filterCategoriesByType(categories, txType),
+    [categories, txType]
+  );
 
   const paymentMethodsList: { id: PaymentMethodType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'Tunai', label: t.paymentCash, icon: Banknote },
@@ -87,8 +99,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     if (isOpening || isDifferentInitial) {
       setBatchItems(null);
       if (initialData) {
+        const initType = getTransactionType(initialData);
+        const typedCats = filterCategoriesByType(categories, initType);
+        setTxType(initType);
         setAmountStr(initialData.amount ? initialData.amount.toLocaleString('id-ID') : '');
-        setSelectedCategoryId(initialData.categoryId);
+        setSelectedCategoryId(initialData.categoryId || typedCats[0]?.id || '');
         try {
           setDateStr(toLocalInputValue(new Date(initialData.date)));
         } catch {
@@ -97,19 +112,29 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         setNotes(initialData.notes || '');
         setPaymentMethod(initialData.paymentMethod || 'Tunai');
       } else {
+        const expenseCats = filterCategoriesByType(categories, 'expense');
+        setTxType('expense');
         setAmountStr('');
-        setSelectedCategoryId(categories[0]?.id || '');
+        setSelectedCategoryId(expenseCats[0]?.id || categories[0]?.id || '');
         setDateStr(toLocalInputValue(new Date()));
         setNotes('');
         setPaymentMethod('Tunai');
       }
       setError('');
       setIsConfirmDeleteOpen(false);
-    } else if (!selectedCategoryId && categories.length > 0) {
+    } else if (!selectedCategoryId && filteredCategories.length > 0) {
       // Jika kategori default belum terpilih tetapi modal sudah terbuka, isi tanpa menghapus nominal
-      setSelectedCategoryId(categories[0]?.id || '');
+      setSelectedCategoryId(filteredCategories[0]?.id || '');
     }
-  }, [initialData, categories, isOpen, selectedCategoryId]);
+  }, [initialData, categories, filteredCategories, isOpen, selectedCategoryId]);
+
+  const handleTypeChange = (nextType: TransactionType) => {
+    setTxType(nextType);
+    const nextCats = filterCategoriesByType(categories, nextType);
+    if (!nextCats.some((c) => c.id === selectedCategoryId)) {
+      setSelectedCategoryId(nextCats[0]?.id || '');
+    }
+  };
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
@@ -155,19 +180,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
     if (results.length === 1) {
       const single = results[0];
+      const nextType: TransactionType = incomeEnabled && single.type === 'income' ? 'income' : 'expense';
+      const typedCats = filterCategoriesByType(categories, nextType);
+      setTxType(nextType);
       setBatchItems(null);
       if (single.amount) {
         setAmountStr(single.amount.toLocaleString('id-ID'));
       }
       if (single.categoryId) {
-        const found = categories.find(
+        const found = typedCats.find(
           (c) =>
             c.id === single.categoryId ||
             c.name.toLowerCase().trim() === single.categoryId?.toLowerCase().trim()
         );
         if (found) {
           setSelectedCategoryId(found.id);
+        } else if (typedCats[0]) {
+          setSelectedCategoryId(typedCats[0].id);
         }
+      } else if (typedCats[0]) {
+        setSelectedCategoryId(typedCats[0].id);
       }
       if (single.notes) {
         setNotes(single.notes);
@@ -211,18 +243,28 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const defaultOthersId =
-        categories.find((c) => c.id === 'cat-others' || /lain|other/i.test(c.name))?.id ||
-        categories[0]?.id ||
+      const expenseCats = filterCategoriesByType(categories, 'expense');
+      const incomeCats = filterCategoriesByType(categories, 'income');
+      const defaultExpenseOthersId =
+        expenseCats.find((c) => c.id === 'cat-others' || /lain|other/i.test(c.name))?.id ||
+        expenseCats[0]?.id ||
         'cat-others';
+      const defaultIncomeOthersId =
+        incomeCats.find((c) => c.id === 'cat-inc-others' || /lain|other/i.test(c.name))?.id ||
+        incomeCats[0]?.id ||
+        defaultExpenseOthersId;
 
-      const formatted = batchItems.map((item) => ({
-        amount: Math.round(item.amount),
-        categoryId: item.categoryId || defaultOthersId,
-        notes: (item.notes || 'Pengeluaran').trim(),
-        paymentMethod: item.paymentMethod || 'Tunai',
-        date: item.dateIso || new Date().toISOString(),
-      }));
+      const formatted = batchItems.map((item) => {
+        const itemType: TransactionType = incomeEnabled && item.type === 'income' ? 'income' : 'expense';
+        return {
+          amount: Math.round(item.amount),
+          type: itemType,
+          categoryId: item.categoryId || (itemType === 'income' ? defaultIncomeOthersId : defaultExpenseOthersId),
+          notes: (item.notes || (itemType === 'income' ? 'Pendapatan' : 'Pengeluaran')).trim(),
+          paymentMethod: item.paymentMethod || 'Tunai',
+          date: item.dateIso || new Date().toISOString(),
+        };
+      });
 
       if (onSaveBatch) {
         await onSaveBatch(formatted);
@@ -249,12 +291,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     const finalAmount = parseInt(amountStr.replace(/\./g, ''), 10);
 
     if (isNaN(finalAmount) || finalAmount <= 0) {
-      setError(t.errorValidAmount);
+      setError(txType === 'income' ? t.errorValidIncomeAmount : t.errorValidAmount);
       return;
     }
 
     if (!selectedCategoryId) {
-      setError(t.errorSelectCategory);
+      setError(txType === 'income' ? t.errorSelectIncomeCategory : t.errorSelectCategory);
       return;
     }
 
@@ -273,6 +315,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         {
           amount: Math.round(finalAmount),
           categoryId: selectedCategoryId,
+          type: txType,
           date: validIsoDate,
           notes: notes.trim(),
           paymentMethod,
@@ -351,7 +394,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     {batchItems && batchItems.length > 0
                       ? `${t.batchReviewTitle} (${batchItems.length})`
                       : initialData
-                      ? t.modalEditTitle
+                      ? txType === 'income'
+                        ? t.modalEditIncomeTitle
+                        : t.modalEditTitle
+                      : txType === 'income'
+                      ? t.modalNewIncomeTitle
                       : t.modalNewTitle}
                   </h2>
                 </div>
@@ -382,6 +429,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 <SmartAiInput
                   categories={categories}
                   onParsed={handleAiParsed}
+                  allowIncome={incomeEnabled}
                   t={t}
                   language={lang}
                 />
@@ -410,7 +458,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* Cards for each batch item */}
-                    {batchItems.map((item, idx) => (
+                    {batchItems.map((item, idx) => {
+                      const itemType: TransactionType = incomeEnabled && item.type === 'income' ? 'income' : 'expense';
+                      const itemCats = filterCategoriesByType(categories, itemType);
+                      return (
                       <div
                         key={idx}
                         className="transaction-modal-card p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3"
@@ -420,12 +471,38 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                             #{idx + 1}
                           </span>
 
+                          {incomeEnabled && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextType: TransactionType = itemType === 'income' ? 'expense' : 'income';
+                                const nextCats = filterCategoriesByType(categories, nextType);
+                                handleUpdateBatchItem(idx, {
+                                  type: nextType,
+                                  categoryId: nextCats[0]?.id || '',
+                                });
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-bold border flex items-center space-x-1 shrink-0 cursor-pointer transition-colors ${
+                                itemType === 'income'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                  : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700'
+                              }`}
+                            >
+                              {itemType === 'income' ? (
+                                <ArrowUpRight className="w-3 h-3" />
+                              ) : (
+                                <ArrowDownRight className="w-3 h-3" />
+                              )}
+                              <span>{itemType === 'income' ? t.incomeTypeLabel : t.expenseTypeLabel}</span>
+                            </button>
+                          )}
+
                           <select
                             value={item.categoryId || ''}
                             onChange={(e) => handleUpdateBatchItem(idx, { categoryId: e.target.value })}
                             className="transaction-modal-input flex-1 text-xs font-semibold py-1.5 px-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 truncate cursor-pointer focus:outline-none focus:border-emerald-500"
                           >
-                            {categories.map((cat) => (
+                            {itemCats.map((cat) => (
                               <option key={cat.id} value={cat.id}>
                                 {cat.name}
                               </option>
@@ -501,15 +578,46 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 ) : (
                   <>
+                    {/* Transaction Type Segmented Switcher (Expense / Income) */}
+                    {showTypeSwitcher && (
+                      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70">
+                        <button
+                          type="button"
+                          onClick={() => handleTypeChange('expense')}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                            txType === 'expense'
+                              ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm ring-1 ring-rose-500/20'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <ArrowDownRight className="w-4 h-4 stroke-[2.5]" />
+                          <span>{t.expenseTypeLabel}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTypeChange('income')}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                            txType === 'income'
+                              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-emerald-500/20'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                          <span>{t.incomeTypeLabel}</span>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Nominal Hero Card */}
                     <div className="transaction-modal-card p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t.amountLabel}
+                          {txType === 'income' ? t.incomeAmountLabel : t.amountLabel}
                         </label>
                         {amountStr && (
                           <button
@@ -524,7 +632,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       </div>
 
                       <div className="flex items-baseline space-x-2">
-                        <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">Rp</span>
+                        <span
+                          className={`text-2xl sm:text-3xl font-extrabold ${
+                            txType === 'income'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : showTypeSwitcher
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          }`}
+                        >
+                          Rp
+                        </span>
                         <input
                           type="text"
                           inputMode="numeric"
@@ -571,7 +689,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1 scrollbar-none">
-                        {categories.map((cat) => {
+                        {filteredCategories.map((cat) => {
                           const isSelected = selectedCategoryId === cat.id;
                           return (
                             <button
@@ -615,7 +733,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         type="text"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder={t.notesPlaceholder}
+                        placeholder={txType === 'income' ? t.incomeNotesPlaceholder : t.notesPlaceholder}
                         className="transaction-modal-input w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       />
                     </div>
@@ -737,7 +855,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                     >
                       <Check className="w-5 h-5 stroke-[3]" />
-                      <span>{isSubmitting ? t.savingBtn : initialData ? t.updateBtn : t.saveBtn}</span>
+                      <span>
+                        {isSubmitting
+                          ? t.savingBtn
+                          : initialData
+                          ? txType === 'income'
+                            ? t.updateIncomeBtn
+                            : t.updateBtn
+                          : txType === 'income'
+                          ? t.saveIncomeBtn
+                          : t.saveBtn}
+                      </span>
                     </button>
                     {initialData && onDelete && (
                       <button
