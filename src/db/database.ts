@@ -18,27 +18,59 @@ export class WalletDatabase extends Dexie {
     this.version(2).stores({
       transactions: 'id, date, categoryId, amount, createdAt, [categoryId+date]'
     });
+    this.version(3).stores({
+      categories: 'id, name, type, createdAt',
+      transactions: 'id, date, categoryId, type, amount, createdAt, [categoryId+date]'
+    });
   }
 }
 
 export const db = new WalletDatabase();
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat-food', name: 'Makanan & Minuman', icon: 'Utensils', color: '#f97316', isDefault: true, order: 0, createdAt: new Date().toISOString() },
-  { id: 'cat-transport', name: 'Transportasi & Bensin', icon: 'Car', color: '#0ea5e9', isDefault: true, order: 1, createdAt: new Date().toISOString() },
-  { id: 'cat-shopping', name: 'Belanja & Kebutuhan', icon: 'ShoppingBag', color: '#ec4899', isDefault: true, order: 2, createdAt: new Date().toISOString() },
-  { id: 'cat-bills', name: 'Tagihan & Utilitas', icon: 'Zap', color: '#eab308', isDefault: true, order: 3, createdAt: new Date().toISOString() },
-  { id: 'cat-entertainment', name: 'Hiburan & Hobi', icon: 'Gamepad2', color: '#a855f7', isDefault: true, order: 4, createdAt: new Date().toISOString() },
-  { id: 'cat-health', name: 'Kesehatan & Obat', icon: 'HeartPulse', color: '#ef4444', isDefault: true, order: 5, createdAt: new Date().toISOString() },
-  { id: 'cat-education', name: 'Edukasi & Buku', icon: 'GraduationCap', color: '#14b8a6', isDefault: true, order: 6, createdAt: new Date().toISOString() },
-  { id: 'cat-others', name: 'Lain-lain', icon: 'CircleEllipsis', color: '#64748b', isDefault: true, order: 7, createdAt: new Date().toISOString() },
+  { id: 'cat-food', name: 'Makanan & Minuman', icon: 'Utensils', color: '#f97316', type: 'expense', isDefault: true, order: 0, createdAt: new Date().toISOString() },
+  { id: 'cat-transport', name: 'Transportasi & Bensin', icon: 'Car', color: '#0ea5e9', type: 'expense', isDefault: true, order: 1, createdAt: new Date().toISOString() },
+  { id: 'cat-shopping', name: 'Belanja & Kebutuhan', icon: 'ShoppingBag', color: '#ec4899', type: 'expense', isDefault: true, order: 2, createdAt: new Date().toISOString() },
+  { id: 'cat-bills', name: 'Tagihan & Utilitas', icon: 'Zap', color: '#eab308', type: 'expense', isDefault: true, order: 3, createdAt: new Date().toISOString() },
+  { id: 'cat-entertainment', name: 'Hiburan & Hobi', icon: 'Gamepad2', color: '#a855f7', type: 'expense', isDefault: true, order: 4, createdAt: new Date().toISOString() },
+  { id: 'cat-health', name: 'Kesehatan & Obat', icon: 'HeartPulse', color: '#ef4444', type: 'expense', isDefault: true, order: 5, createdAt: new Date().toISOString() },
+  { id: 'cat-education', name: 'Edukasi & Buku', icon: 'GraduationCap', color: '#14b8a6', type: 'expense', isDefault: true, order: 6, createdAt: new Date().toISOString() },
+  { id: 'cat-others', name: 'Lain-lain', icon: 'CircleEllipsis', color: '#64748b', type: 'expense', isDefault: true, order: 7, createdAt: new Date().toISOString() },
 ];
+
+export const DEFAULT_INCOME_CATEGORIES: Category[] = [
+  { id: 'cat-inc-salary', name: 'Gaji', icon: 'Briefcase', color: '#10b981', type: 'income', isDefault: true, order: 0, createdAt: new Date().toISOString() },
+  { id: 'cat-inc-bonus', name: 'Bonus & THR', icon: 'Gift', color: '#14b8a6', type: 'income', isDefault: true, order: 1, createdAt: new Date().toISOString() },
+  { id: 'cat-inc-freelance', name: 'Freelance & Usaha', icon: 'Laptop', color: '#0ea5e9', type: 'income', isDefault: true, order: 2, createdAt: new Date().toISOString() },
+  { id: 'cat-inc-invest', name: 'Investasi & Dividen', icon: 'PiggyBank', color: '#8b5cf6', type: 'income', isDefault: true, order: 3, createdAt: new Date().toISOString() },
+  { id: 'cat-inc-others', name: 'Pemasukan Lain', icon: 'CircleEllipsis', color: '#64748b', type: 'income', isDefault: true, order: 4, createdAt: new Date().toISOString() },
+];
+
+function getDeletedCategoryIdsLocal(): Set<string> {
+  try {
+    const raw = localStorage.getItem('duit_deleted_category_ids');
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
 
 export async function initializeDefaultData() {
   // Initialize default base categories if empty
   const categoryCount = await db.categories.count();
   if (categoryCount === 0) {
-    await db.categories.bulkPut(DEFAULT_CATEGORIES);
+    await db.categories.bulkPut([...DEFAULT_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
+  } else {
+    // Seed default income categories for existing users upgrading from expense-only versions
+    const deletedIds = getDeletedCategoryIdsLocal();
+    const existingCats = await db.categories.toArray();
+    const existingIds = new Set(existingCats.map((c) => c.id));
+    const missingIncomeDefaults = DEFAULT_INCOME_CATEGORIES.filter(
+      (c) => !existingIds.has(c.id) && !deletedIds.has(c.id)
+    );
+    if (missingIncomeDefaults.length > 0) {
+      await db.categories.bulkPut(missingIncomeDefaults);
+    }
   }
 
   // Clean up legacy dummy budget limits on default categories (2.5jt, 1jt, 1.5jt, etc.)

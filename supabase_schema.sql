@@ -30,12 +30,14 @@ BEGIN
     ALTER TABLE public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
     ALTER TABLE public.categories ADD PRIMARY KEY (id, user_id);
     ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS order_index INT DEFAULT 0;
+    ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'expense';
   END IF;
 
   -- Ubah primary key transactions menjadi composite (id, user_id)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'transactions' AND table_schema = 'public') THEN
     ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_pkey;
     ALTER TABLE public.transactions ADD PRIMARY KEY (id, user_id);
+    ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'expense';
   END IF;
 
   -- Ubah primary key budgets menjadi composite (id, user_id)
@@ -68,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
   name TEXT NOT NULL,
   icon TEXT NOT NULL,
   color TEXT NOT NULL,
+  type TEXT DEFAULT 'expense',
   budget_limit NUMERIC DEFAULT 0,
   is_default BOOLEAN DEFAULT FALSE,
   order_index INT DEFAULT 0,
@@ -82,6 +85,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   amount NUMERIC NOT NULL,
   date TEXT NOT NULL,
   category_id TEXT NOT NULL,
+  type TEXT DEFAULT 'expense',
   notes TEXT,
   payment_method TEXT,
   tags TEXT[],
