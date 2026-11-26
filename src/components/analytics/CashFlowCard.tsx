@@ -17,46 +17,17 @@ export const CashFlowCard: React.FC<CashFlowCardProps> = React.memo(({
   lang = 'id',
   t,
 }) => {
-  const { totalIncome, totalExpense, netCashFlow, status, expenseRatioPct, savingRatePct } = summary;
-
-  const badgeConfig = {
-    surplus: {
-      label: t.statusSurplus,
-      className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-      barClass: 'bg-emerald-500',
-    },
-    boncos: {
-      label: t.statusBoncos,
-      className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-      barClass: 'bg-rose-500',
-    },
-    no_income: {
-      label: t.statusNoIncome,
-      className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-      barClass: 'bg-amber-500',
-    },
-    even: {
-      label: t.statusEven,
-      className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20',
-      barClass: 'bg-slate-400',
-    },
-  }[status];
+  const { totalIncome, totalExpense, netCashFlow, expenseRatioPct, savingRatePct } = summary;
 
   return (
     <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <Scale className="w-4 h-4" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {t.cashFlowHealthTitle}
-          </h3>
+      <div className="flex items-center space-x-2.5">
+        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <Scale className="w-4 h-4" />
         </div>
-
-        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badgeConfig.className}`}>
-          {badgeConfig.label}
-        </span>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+          {t.cashFlowHealthTitle}
+        </h3>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

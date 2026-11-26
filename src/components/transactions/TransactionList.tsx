@@ -493,11 +493,6 @@ export const TransactionList: React.FC<TransactionListProps> = memo(({
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
                               {cat.name}
                             </span>
-                            {isIncome && (
-                              <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
-                                {t.incomeTypeLabel}
-                              </span>
-                            )}
                             {paymentBadge && (
                               <span className={`hidden sm:inline-flex items-center space-x-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${paymentBadge.color}`}>
                                 <paymentBadge.icon className="w-3 h-3" />

@@ -26,7 +26,7 @@ import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
 import { reminderService } from './services/reminderService';
 import { themeService } from './services/themeService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock, ArrowUpDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
@@ -471,7 +471,6 @@ export function App() {
     currentMonthTotal,
     currentMonthIncome,
     netCashFlow,
-    cashFlowStatus,
     expenseRatioPct,
     currentMonthDailyAverage,
     todaySpent,
@@ -536,7 +535,6 @@ export function App() {
         currentMonthTotal: total,
         currentMonthIncome: cashFlow.totalIncome,
         netCashFlow: cashFlow.netCashFlow,
-        cashFlowStatus: cashFlow.status,
         expenseRatioPct: cashFlow.expenseRatioPct,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
@@ -562,7 +560,6 @@ export function App() {
         currentMonthTotal: total,
         currentMonthIncome: cashFlow.totalIncome,
         netCashFlow: cashFlow.netCashFlow,
-        cashFlowStatus: cashFlow.status,
         expenseRatioPct: cashFlow.expenseRatioPct,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
@@ -934,7 +931,7 @@ export function App() {
             <div className="glass-card rounded-3xl p-5 sm:p-6">
               {/* Header Row: Label & Month Navigator */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-900/5 dark:border-white/10">
-                <div className="flex items-center flex-wrap gap-2">
+                <div className="flex items-center space-x-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
                     <Banknote className="w-4 h-4" />
                   </div>
@@ -947,27 +944,6 @@ export function App() {
                       ? t.totalExpenseAllTime
                       : t.totalExpenseThisMonth}
                   </span>
-                  {incomeEnabled && (
-                    <span
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                        cashFlowStatus === 'surplus'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                          : cashFlowStatus === 'boncos'
-                          ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                          : cashFlowStatus === 'no_income'
-                          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {cashFlowStatus === 'surplus'
-                        ? t.statusSurplus
-                        : cashFlowStatus === 'boncos'
-                        ? t.statusBoncos
-                        : cashFlowStatus === 'no_income'
-                        ? t.statusNoIncome
-                        : t.statusEven}
-                    </span>
-                  )}
                   {/* Privacy / Sensor Nominal Toggle Button */}
                   <button
                     type="button"
@@ -981,20 +957,6 @@ export function App() {
                     ) : (
                       <Eye className="w-4 h-4" />
                     )}
-                  </button>
-                  {/* Quick Income Tracking Mode Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleIncomeEnabled(!incomeEnabled)}
-                    className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-                      incomeEnabled
-                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60'
-                    }`}
-                    title={incomeEnabled ? t.disableIncomeBtn : t.enableIncomeBtn}
-                    aria-label={incomeEnabled ? t.disableIncomeBtn : t.enableIncomeBtn}
-                  >
-                    <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </div>
 

@@ -436,7 +436,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                   </span>
                 </div>
 
-                {effectiveTypeTab === 'expense' ? (
+                {effectiveTypeTab === 'expense' && (
                   cat.budgetLimit ? (
                     <div className="text-right min-w-0">
                       <span className="text-slate-400 text-[11px] block">{t.budgetLimitPerMonth}</span>
@@ -451,10 +451,6 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                       </span>
                     </div>
                   )
-                ) : (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-                    {t.incomeTypeLabel}
-                  </span>
                 )}
               </div>
             </div>

@@ -356,20 +356,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <ArrowUpDown className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                    {t.incomeFeatureSection}
-                  </h2>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      incomeEnabled
-                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    {incomeEnabled ? 'ON' : 'OFF'}
-                  </span>
-                </div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {t.incomeFeatureSection}
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   {t.incomeFeatureDesc}
                 </p>
