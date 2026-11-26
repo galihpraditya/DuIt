@@ -33,7 +33,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = React.memo(({
       borderRadius: '14px',
       border: darkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
       boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 12px 32px -12px rgba(15,23,42,0.18)',
-      backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+      backgroundColor: 'var(--tooltip-bg)',
       color: darkMode ? '#f8fafc' : '#0f172a',
       fontSize: '12px',
       fontWeight: '600',
@@ -43,7 +43,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = React.memo(({
   const hasData = categoryData.length > 0 && currentTotal > 0;
 
   return (
-    <div className="glass-card p-5 rounded-3xl flex flex-col justify-between h-full">
+    <div className="glass-card p-5 rounded-2xl flex flex-col justify-between h-full">
       <div>
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
           <PieIcon className="w-4 h-4 text-teal-500" />
@@ -53,7 +53,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = React.memo(({
 
       <div className="h-56 relative my-2 min-h-[224px] w-full">
         {!hasData ? (
-          <div className="h-full flex items-center justify-center text-xs text-slate-400">
+          <div className="h-full flex items-center justify-center text-xs text-slate-600 dark:text-slate-400">
             {t.noDataPeriod}
           </div>
         ) : (
@@ -84,7 +84,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = React.memo(({
 
             {/* Center Donut Label with pointer-events-none to prevent hover flicker */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[10px] font-medium text-slate-400">Total</span>
+              <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Total</span>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                 {formatIDR(currentTotal, true, lang)}
               </span>

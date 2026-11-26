@@ -32,18 +32,18 @@ export const CategoryRankingTable: React.FC<CategoryRankingTableProps> = React.m
   }, [categories]);
 
   return (
-    <div className="glass-card rounded-3xl p-5 md:p-6 shadow-sm">
+    <div className="glass-card rounded-2xl p-5 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
           {t.rankingTitle}
         </h3>
-        <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+        <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
           {categoryData.length} kategori
         </span>
       </div>
 
       {categoryData.length === 0 ? (
-        <p className="text-xs text-slate-400 py-6 text-center">{t.noRankingData}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-400 py-6 text-center">{t.noRankingData}</p>
       ) : (
         <div className="space-y-3.5">
           {categoryData.map((cat, idx) => {
@@ -60,7 +60,7 @@ export const CategoryRankingTable: React.FC<CategoryRankingTableProps> = React.m
                 {/* Row 1: Rank, Icon, Name (Left) & Total Amount (Right) */}
                 <div className="flex items-center justify-between text-xs gap-2">
                   <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-                    <span className="w-5 text-slate-400 font-bold text-[11px] shrink-0 font-mono">
+                    <span className="w-5 text-slate-600 dark:text-slate-400 font-bold text-[11px] shrink-0 font-mono">
                       #{idx + 1}
                     </span>
                     <div
@@ -80,7 +80,7 @@ export const CategoryRankingTable: React.FC<CategoryRankingTableProps> = React.m
                 </div>
 
                 {/* Row 2: Metadata (Count + Budget Limit Status) & Share % */}
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pl-7 sm:pl-7.5 gap-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pl-7 sm:pl-7.5 gap-2">
                   <div className="flex items-center gap-1.5 min-w-0 truncate text-[10px] sm:text-[11px]">
                     <span className="shrink-0">
                       {cat.count} {t.kpiTimes}

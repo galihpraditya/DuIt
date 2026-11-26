@@ -69,8 +69,9 @@ export const Navbar: React.FC<NavbarProps> = memo(({
         {/* Floating Bar — efek kaca lewat border & shadow */}
         <div className="relative flex items-center justify-between h-14 sm:h-16 mt-3 px-3 sm:px-4 rounded-2xl glass-panel">
           {/* Logo & Brand: "DuIt" with serif "It" */}
-          <div
-            className="flex items-center space-x-2.5 cursor-pointer group select-none"
+          <button
+            type="button"
+            className="flex items-center space-x-2.5 cursor-pointer group select-none min-h-[44px] rounded-xl pr-1"
             onClick={() => onSelectTab('transactions')}
           >
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white group-hover:bg-emerald-700 transition-colors">
@@ -81,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                 Du<span className="font-serif font-black not-italic text-emerald-500 dark:text-emerald-400 ml-0.5 text-2xl">It</span>
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Desktop Navigation Links - Centered Absolutely */}
           <nav className="hidden md:flex items-center space-x-1 absolute left-1/2 -translate-x-1/2 bg-slate-900/5 dark:bg-white/10 p-1 rounded-xl">
@@ -107,8 +108,9 @@ export const Navbar: React.FC<NavbarProps> = memo(({
           <div className="flex items-center space-x-1.5 sm:space-x-2">
             {/* Settings Button (Gear icon with tooltip & active indicator) */}
             <button
+              type="button"
               onClick={onOpenSettings}
-              className={`p-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 flex items-center justify-center group cursor-pointer ${
+              className={`min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px] p-2.5 rounded-xl border transition-all active:scale-95 flex items-center justify-center group cursor-pointer ${
                 activeTab === 'settings'
                   ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/20'
                   : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'

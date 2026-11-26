@@ -39,27 +39,22 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
     hasBudget,
   } = safeData;
 
-  // 1. Fallback jika belum ada limit anggaran
+  // 1. Compact inline prompt when no category budget limits exist
   if (!hasBudget) {
+    if (!onNavigateToBudget) return null;
     return (
-      <div className="glass-card rounded-3xl p-5 border border-dashed border-slate-300 dark:border-slate-700/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {t.safeToSpendTitle}
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.setBudgetPrompt}
-          </p>
-        </div>
-        {onNavigateToBudget && (
-          <button
-            onClick={onNavigateToBudget}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer shrink-0 active:scale-95"
-          >
-            <span>{t.btnSetBudget}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        )}
+      <div className="rounded-2xl bg-slate-100/80 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-2.5">
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+          {t.setBudgetPrompt}
+        </p>
+        <button
+          type="button"
+          onClick={onNavigateToBudget}
+          className="inline-flex items-center gap-1 min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+        >
+          <span>{t.btnSetBudget}</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     );
   }
@@ -68,16 +63,16 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
   if (!isCurrentMonth) {
     const isSurplus = remainingBudget >= 0;
     return (
-      <div className="glass-card rounded-3xl p-5 shadow-sm space-y-3">
+      <div className="glass-card rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
             {t.pastPeriodRecapTitle}
           </h3>
           <span
-            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+            className={`text-xs font-bold ${
               isSurplus
-                ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
-                : 'bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
             }`}
           >
             {isSurplus ? t.recapSurplus : t.recapDeficit}
@@ -85,19 +80,19 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
           <div>
-            <span className="text-slate-400 block mb-0.5">Target</span>
+            <span className="text-slate-600 dark:text-slate-400 block mb-0.5">Target</span>
             <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
               {formatIDR(totalMonthlyBudget, false, lang)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block mb-0.5">{t.kpiTotalExpense}</span>
+            <span className="text-slate-600 dark:text-slate-400 block mb-0.5">{t.kpiTotalExpense}</span>
             <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
               {formatIDR(currentSpent, false, lang)}
             </span>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <span className="text-slate-400 block mb-0.5">Selisih</span>
+            <span className="text-slate-600 dark:text-slate-400 block mb-0.5">Selisih</span>
             <span
               className={`font-bold text-sm ${
                 isSurplus
@@ -117,43 +112,41 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
   const statusConfig = {
     healthy: {
       badge: t.statusHealthy,
-      badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      textClass: 'text-emerald-600 dark:text-emerald-400',
       icon: <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
       barColor: 'bg-emerald-500',
     },
     warning: {
       badge: t.statusWarning,
-      badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      textClass: 'text-amber-600 dark:text-amber-400',
       icon: <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
       barColor: 'bg-amber-500',
     },
     critical: {
       badge: t.statusCritical,
-      badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+      textClass: 'text-rose-600 dark:text-rose-400',
       icon: <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />,
       barColor: 'bg-rose-500',
     },
     no_budget: {
       badge: t.statusNoBudget,
-      badgeClass: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+      textClass: 'text-slate-600 dark:text-slate-400',
       icon: null,
       barColor: 'bg-slate-400',
     },
   }[status];
 
   return (
-    <div className="glass-card rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-      {/* Clean Header: Title + Status Badge */}
-      <div className="flex items-center justify-between">
+    <div className="glass-card rounded-2xl p-5 md:p-6 space-y-4">
+      {/* Clean Header: Title + Plain Status Label */}
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {statusConfig.icon}
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
             {t.safeDailyLimitLabel}
           </h3>
         </div>
-        <span
-          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide border ${statusConfig.badgeClass}`}
-        >
+        <span className={`text-xs font-bold tracking-wide ${statusConfig.textClass}`}>
           {statusConfig.badge}
         </span>
       </div>
@@ -164,21 +157,21 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
           <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
             {formatIDR(safeDailyLimit, false, lang)}
           </span>
-          <span className="text-xs font-semibold text-slate-400">/ hari</span>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">/ hari</span>
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          untuk sisa <span className="font-semibold text-slate-700 dark:text-slate-200">{daysRemaining} hari</span> lagi
+        <span className="text-xs text-slate-600 dark:text-slate-400">
+          untuk sisa <span className="font-semibold text-slate-800 dark:text-slate-200">{daysRemaining} hari</span> lagi
         </span>
       </div>
 
       {/* Clean Single Progress Bar */}
       <div className="space-y-1.5 pt-1">
-        <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400 font-medium">
           <span>
-            Terpakai: <span className="text-slate-700 dark:text-slate-200 font-semibold">{formatIDR(currentSpent, true, lang)}</span> ({budgetSpentPercentage}%)
+            Terpakai: <span className="text-slate-800 dark:text-slate-200 font-semibold">{formatIDR(currentSpent, true, lang)}</span> ({budgetSpentPercentage}%)
           </span>
           <span>
-            Sisa: <span className={`font-semibold ${remainingBudget < 0 ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{formatIDR(remainingBudget, true, lang)}</span>
+            Sisa: <span className={`font-semibold ${remainingBudget < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>{formatIDR(remainingBudget, true, lang)}</span>
           </span>
         </div>
         <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700/60 overflow-hidden">
@@ -192,7 +185,7 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
       {/* 2 Compact Secondary Stats */}
       <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
         <div>
-          <span className="text-slate-400 block mb-0.5">{t.remainingBudgetLabel}</span>
+          <span className="text-slate-600 dark:text-slate-400 block mb-0.5">{t.remainingBudgetLabel}</span>
           <span
             className={`font-bold text-sm ${
               remainingBudget < 0
@@ -205,7 +198,7 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
         </div>
 
         <div>
-          <span className="text-slate-400 block mb-0.5">{t.projectedTotalLabel}</span>
+          <span className="text-slate-600 dark:text-slate-400 block mb-0.5">{t.projectedTotalLabel}</span>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
               {formatIDR(projectedTotal, false, lang)}

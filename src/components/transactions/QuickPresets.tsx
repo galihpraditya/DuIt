@@ -164,8 +164,8 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
   if (presets.length === 0) return null;
 
   return (
-    <div className="flex items-center space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
-      <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400 pl-1 shrink-0">
+    <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center text-xs font-bold text-slate-600 dark:text-slate-400 pl-0.5 shrink-0">
         <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
         <span>{t.shortcuts}</span>
       </div>
@@ -174,8 +174,9 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
         return (
           <button
             key={`${preset.label}-${index}`}
+            type="button"
             onClick={() => onSelectPreset(preset)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg glass-pill hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center space-x-2 active:scale-95 group cursor-pointer"
+            className="shrink-0 min-h-[40px] sm:min-h-[36px] text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center space-x-2 active:scale-95 group cursor-pointer"
             title={preset.isHabit ? (lang === 'en' ? `Recorded ${preset.frequency} times` : `Sering dicatat (${preset.frequency}x)`) : undefined}
           >
             {cat && (

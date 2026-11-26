@@ -157,6 +157,7 @@ export interface Translations {
   kpiHighestExpense: string;
   kpiHighestExpenseDesc: string;
   kpiFrequency: string;
+  kpiIncomeFrequency: string;
   kpiTimes: string;
   kpiFreqDesc: string;
   kpiToday: string;
@@ -618,6 +619,7 @@ export const translations: Record<Language, Translations> = {
     kpiHighestExpense: 'Pengeluaran Terbesar',
     kpiHighestExpenseDesc: '',
     kpiFrequency: 'Frekuensi Belanja',
+    kpiIncomeFrequency: 'Frekuensi Pemasukan',
     kpiTimes: 'kali',
     kpiFreqDesc: '',
     kpiToday: 'Hari Ini',
@@ -739,7 +741,7 @@ export const translations: Record<Language, Translations> = {
     reminderActiveBadge: 'Pengingat Aktif',
     reminderInactiveBadge: 'Nonaktif',
     reminderNotificationTitle: 'DuIt - Pengingat Harian',
-    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol! 💰',
+    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol.',
 
     // Groq AI Settings & Smart Input
     aiSection: 'Input Cerdas',
@@ -1080,6 +1082,7 @@ export const translations: Record<Language, Translations> = {
     kpiHighestExpense: 'Highest Single Expense',
     kpiHighestExpenseDesc: '',
     kpiFrequency: 'Spending Frequency',
+    kpiIncomeFrequency: 'Income Frequency',
     kpiTimes: 'times',
     kpiFreqDesc: '',
     kpiToday: 'Today',
@@ -1201,7 +1204,7 @@ export const translations: Record<Language, Translations> = {
     reminderActiveBadge: 'Reminder Active',
     reminderInactiveBadge: 'Disabled',
     reminderNotificationTitle: 'DuIt - Daily Reminder',
-    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget! 💰",
+    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget.",
 
     // Groq AI Settings & Smart Input
     aiSection: 'Smart Input',
