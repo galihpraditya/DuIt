@@ -49,7 +49,7 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
       borderRadius: '14px',
       border: darkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
       boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 12px 32px -12px rgba(15,23,42,0.18)',
-      backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+      backgroundColor: 'var(--tooltip-bg)',
       color: darkMode ? '#f8fafc' : '#0f172a',
       fontSize: '12px',
       fontWeight: '600',
@@ -127,8 +127,8 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
       {/* Chart Visualizer */}
       <div className="h-64 sm:h-72 w-full pt-2 min-h-[256px]">
         {activeSeriesLength === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-xs text-slate-400 space-y-2">
-            <Zap className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+          <div className="h-full flex flex-col items-center justify-center text-xs text-slate-600 dark:text-slate-400 space-y-2">
+            <Zap className="w-6 h-6 text-slate-400 dark:text-slate-500" />
             <span>{t.noDataPeriod}</span>
           </div>
         ) : isCashFlowMode ? (

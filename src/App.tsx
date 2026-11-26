@@ -26,7 +26,7 @@ import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
 import { reminderService } from './services/reminderService';
 import { themeService } from './services/themeService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
@@ -66,7 +66,7 @@ const MonthYearPickerModal = lazy(() =>
 const ViewLoaderFallback = () => (
   <div className="flex flex-col items-center justify-center py-20 space-y-3">
     <Loader2 className="w-7 h-7 text-emerald-500 animate-spin" />
-    <span className="text-xs text-slate-400 font-medium">Memuat tampilan...</span>
+    <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Memuat tampilan...</span>
   </div>
 );
 
@@ -420,7 +420,7 @@ export function App() {
           const end = new Date(y, m, 0, 23, 59, 59, 999).toISOString();
           return db.transactions.where('date').between(start, end, true, true).reverse().sortBy('date');
         }
-      } catch {}
+      } catch { }
       return db.transactions.orderBy('date').reverse().toArray();
     },
     [selectedMonthFilter, isAllTime]
@@ -471,7 +471,6 @@ export function App() {
     currentMonthTotal,
     currentMonthIncome,
     netCashFlow,
-    expenseRatioPct,
     currentMonthDailyAverage,
     todaySpent,
     highestExpenseInMonth,
@@ -535,7 +534,6 @@ export function App() {
         currentMonthTotal: total,
         currentMonthIncome: cashFlow.totalIncome,
         netCashFlow: cashFlow.netCashFlow,
-        expenseRatioPct: cashFlow.expenseRatioPct,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
         highestExpenseInMonth: highest,
@@ -550,7 +548,7 @@ export function App() {
       expenseVisible.forEach((tx) => {
         try {
           uniqueDays.add(tx.date.split('T')[0]);
-        } catch {}
+        } catch { }
       });
       const daysCount = Math.max(1, uniqueDays.size);
       const dailyAverage = Math.round(total / daysCount);
@@ -560,7 +558,6 @@ export function App() {
         currentMonthTotal: total,
         currentMonthIncome: cashFlow.totalIncome,
         netCashFlow: cashFlow.netCashFlow,
-        expenseRatioPct: cashFlow.expenseRatioPct,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
         highestExpenseInMonth: highest,
@@ -607,8 +604,8 @@ export function App() {
             ? 'Catatan pendapatan berhasil diperbarui!'
             : 'Catatan pengeluaran berhasil diperbarui!'
           : isIncome
-          ? 'Income updated successfully!'
-          : 'Expense updated successfully!',
+            ? 'Income updated successfully!'
+            : 'Expense updated successfully!',
         'success'
       );
     } else {
@@ -718,23 +715,23 @@ export function App() {
       createdAnchor =
         deletingType === 'income'
           ? {
-              id: 'cat-inc-others',
-              name: 'Pemasukan Lain',
-              icon: 'CircleEllipsis',
-              color: '#64748b',
-              type: 'income',
-              isDefault: true,
-              createdAt: new Date().toISOString(),
-            }
+            id: 'cat-inc-others',
+            name: 'Pemasukan Lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'income',
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+          }
           : {
-              id: 'cat-others',
-              name: 'Lain-lain',
-              icon: 'CircleEllipsis',
-              color: '#64748b',
-              type: 'expense',
-              isDefault: true,
-              createdAt: new Date().toISOString(),
-            };
+            id: 'cat-others',
+            name: 'Lain-lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'expense',
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+          };
       syncService.unmarkCategoryDeleted(createdAnchor.id);
       await db.categories.put(createdAnchor);
       fallbackCatId = createdAnchor.id;
@@ -928,27 +925,30 @@ export function App() {
         {/* Top Summary Banner: Liquid Glass Stats Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">
-            <div className="glass-card rounded-3xl p-5 sm:p-6">
+            <div className="glass-card rounded-3xl p-4 sm:p-6">
               {/* Header Row: Label & Month Navigator */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-900/5 dark:border-white/10">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
-                    <Banknote className="w-4 h-4" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b border-slate-900/5 dark:border-white/10">
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
+                      <Banknote className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tracking-wide">
+                      {incomeEnabled
+                        ? isAllTime
+                          ? t.cashFlowAllTime
+                          : t.cashFlowThisMonth
+                        : isAllTime
+                          ? t.totalExpenseAllTime
+                          : t.totalExpenseThisMonth}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 tracking-wide">
-                    {incomeEnabled
-                      ? isAllTime
-                        ? t.cashFlowAllTime
-                        : t.cashFlowThisMonth
-                      : isAllTime
-                      ? t.totalExpenseAllTime
-                      : t.totalExpenseThisMonth}
-                  </span>
+
                   {/* Privacy / Sensor Nominal Toggle Button */}
                   <button
                     type="button"
                     onClick={handleToggleHideNominals}
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
                     title={hideNominals ? t.showNominal : t.hideNominal}
                     aria-label={hideNominals ? t.showNominal : t.hideNominal}
                   >
@@ -961,11 +961,13 @@ export function App() {
                 </div>
 
                 {/* Month Navigator */}
-                <div className="flex items-center justify-between sm:justify-end space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-end space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
                   <button
+                    type="button"
                     onClick={handlePrevMonth}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
                     title={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
+                    aria-label={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
                   >
                     <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
                   </button>
@@ -973,7 +975,7 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setIsMonthPickerOpen(true)}
-                    className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm min-w-[120px]"
+                    className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] flex items-center justify-center space-x-1.5 px-3 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm min-w-[120px] cursor-pointer"
                     title={language === 'en' ? 'Click to select month & year' : 'Klik untuk memilih bulan & tahun'}
                   >
                     {isAllTime ? (
@@ -992,72 +994,50 @@ export function App() {
                   </button>
 
                   <button
+                    type="button"
                     onClick={handleNextMonth}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
                     title={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
+                    aria-label={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
                   >
                     <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
               </div>
 
-              {/* Main Content: Big Number & Auxiliary Metrics */}
-              <div className="pt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-end">
-                {/* Left: Total Expense (OFF) or Net Cash Flow (ON) */}
-                <div className="lg:col-span-7 space-y-2.5">
+              {/* Main Content: 1 Primary Figure + 2 Concise Secondary Metrics */}
+              <div className="pt-3.5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-end">
+                <div className="lg:col-span-7">
                   {incomeEnabled ? (
-                    <>
-                      <div>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                          {t.netCashFlowLabel}
-                        </span>
-                        <div
-                          className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none ${
-                            netCashFlow < 0
-                              ? 'text-rose-600 dark:text-rose-400'
-                              : netCashFlow > 0
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-slate-900 dark:text-white'
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1">
+                        {t.netCashFlowLabel}
+                      </span>
+                      <div
+                        className={`text-3xl sm:text-5xl font-extrabold tracking-tight leading-none ${netCashFlow < 0
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : netCashFlow > 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-slate-900 dark:text-white'
                           }`}
-                        >
-                          {!hideNominals && (netCashFlow > 0 ? '+' : netCashFlow < 0 ? '−' : '')}
-                          {formatIDR(Math.abs(netCashFlow), false, language, hideNominals)}
-                        </div>
+                      >
+                        {!hideNominals && (netCashFlow > 0 ? '+' : netCashFlow < 0 ? '−' : '')}
+                        {formatIDR(Math.abs(netCashFlow), false, language, hideNominals)}
                       </div>
-                      {currentMonthIncome > 0 && (
-                        <div className="max-w-md space-y-1">
-                          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                expenseRatioPct > 100
-                                  ? 'bg-rose-500'
-                                  : expenseRatioPct >= 80
-                                  ? 'bg-amber-500'
-                                  : 'bg-emerald-500'
-                              }`}
-                              style={{ width: `${Math.min(100, expenseRatioPct)}%` }}
-                            />
-                          </div>
-                          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                            {expenseRatioPct}% {t.incomeCoveredPct}
-                          </p>
-                        </div>
-                      )}
-                    </>
+                    </div>
                   ) : (
-                    <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
+                    <div className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
                       {formatIDR(currentMonthTotal, false, language, hideNominals)}
                     </div>
                   )}
                 </div>
 
-                {/* Right: Inline Metrics */}
-                <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 gap-y-3 w-full lg:border-l lg:border-slate-900/10 dark:lg:border-white/10 lg:pl-8">
-                  {incomeEnabled && (
+                <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 w-full pt-3 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800/80 lg:pl-8">
+                  {incomeEnabled ? (
                     <>
                       <div>
-                        <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                          <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
+                        <div className="flex items-center space-x-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                           <span className="truncate">{t.totalIncomeLabel}</span>
                         </div>
                         <div className="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 tracking-tight truncate">
@@ -1067,8 +1047,8 @@ export function App() {
                       </div>
 
                       <div>
-                        <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                          <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
+                        <div className="flex items-center space-x-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <ArrowDownRight className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                           <span className="truncate">{t.totalExpenseLabel}</span>
                         </div>
                         <div className="text-base sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5 tracking-tight truncate">
@@ -1077,34 +1057,32 @@ export function App() {
                         </div>
                       </div>
                     </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 block truncate">
+                          {t.kpiDailyAverage}
+                        </span>
+                        <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                          {formatIDR(currentMonthDailyAverage, false, language, hideNominals)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 block truncate">
+                          {isCurrentMonth ? (t.kpiToday || 'Hari Ini') : t.kpiHighestExpense}
+                        </span>
+                        <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                          {formatIDR(
+                            isCurrentMonth ? todaySpent : highestExpenseInMonth,
+                            false,
+                            language,
+                            hideNominals
+                          )}
+                        </div>
+                      </div>
+                    </>
                   )}
-
-                  <div>
-                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                      <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="truncate">{t.kpiDailyAverage}</span>
-                    </div>
-                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
-                      {formatIDR(currentMonthDailyAverage, false, language, hideNominals)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                      <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="truncate">
-                        {isCurrentMonth ? (t.kpiToday || 'Hari Ini') : t.kpiHighestExpense}
-                      </span>
-                    </div>
-                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
-                      {formatIDR(
-                        isCurrentMonth ? todaySpent : highestExpenseInMonth,
-                        false,
-                        language,
-                        hideNominals
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

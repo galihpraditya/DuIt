@@ -188,22 +188,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   } = analyticsData;
 
   return (
-    <div className="space-y-6">
-      {/* Timeframe Selector Header */}
-      <div className="glass-card p-5 rounded-3xl space-y-3">
+    <div className="space-y-5">
+      {/* Compact Timeframe & Mode Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 rounded-2xl space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
-              <PieIcon className="w-5 h-5 text-emerald-500" />
+              <PieIcon className="w-4 h-4 text-emerald-500" />
               <span>{t.analyticsHeaderTitle}</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
               {periodLabel}
             </p>
           </div>
 
           {/* Quick Period Buttons */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto whitespace-nowrap scrollbar-none">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto whitespace-nowrap scrollbar-none">
             {[
               { id: 'today', label: t.periodToday },
               { id: '7days', label: t.period7Days },
@@ -215,11 +215,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setSelectedPeriod(tab.id as PeriodOption)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   selectedPeriod === tab.id
-                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 {tab.label}
@@ -230,7 +231,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
         {/* Analytics Mode Switcher (Only when incomeEnabled) */}
         {incomeEnabled && (
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 w-fit">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 w-fit">
             {[
               { id: 'cashflow', label: t.analyticsModeCashFlow },
               { id: 'expense', label: t.analyticsModeExpense },
@@ -240,10 +241,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 key={modeTab.id}
                 type="button"
                 onClick={() => setAnalyticsMode(modeTab.id as AnalyticsMode)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   effectiveMode === modeTab.id
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 {modeTab.label}
@@ -256,38 +257,50 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         {selectedPeriod === 'custom' && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
             <div className="flex items-center space-x-2 text-xs">
-              <span className="text-slate-500 dark:text-slate-400">{t.fromLabel}</span>
+              <span className="text-slate-600 dark:text-slate-400">{t.fromLabel}</span>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
+                className="min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
               />
             </div>
             <div className="flex items-center space-x-2 text-xs">
-              <span className="text-slate-500 dark:text-slate-400">{t.toLabel}</span>
+              <span className="text-slate-600 dark:text-slate-400">{t.toLabel}</span>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
+                className="min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
               />
             </div>
           </div>
         )}
       </div>
 
-      {/* Cash Flow Health Summary (Surplus vs Boncos) */}
-      {incomeEnabled && cashFlowSummary && (
+      {/* Executive Summary Layer: CashFlowCard in Cash Flow mode, KpiCards in single-type modes */}
+      {incomeEnabled && effectiveMode === 'cashflow' && cashFlowSummary ? (
         <CashFlowCard
           summary={cashFlowSummary}
           hideNominals={hideNominals}
           lang={lang}
           t={t}
         />
+      ) : (
+        <KpiCards
+          currentTotal={currentTotal}
+          percentageChange={percentageChange}
+          averagePerDay={averagePerDay}
+          highestExpense={highestExpense}
+          txCount={txCount}
+          variant={activeBreakdownType}
+          hideNominals={hideNominals}
+          lang={lang}
+          t={t}
+        />
       )}
 
-      {/* Safe-to-Spend & Forecast Burn Rate Card (Always expense vs budget) */}
+      {/* Safe-to-Spend & Forecast Burn Rate Card (Only in expense / cashflow modes) */}
       {effectiveMode !== 'income' && (
         <SafeToSpendCard
           safeData={safeData}
@@ -297,19 +310,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           t={t}
         />
       )}
-
-      {/* KPI Cards Grid (Memoized) */}
-      <KpiCards
-        currentTotal={currentTotal}
-        percentageChange={percentageChange}
-        averagePerDay={averagePerDay}
-        highestExpense={highestExpense}
-        txCount={txCount}
-        variant={activeBreakdownType}
-        hideNominals={hideNominals}
-        lang={lang}
-        t={t}
-      />
 
       {/* Charts Section: 2 Columns with min-w-0 for reliable CSS grid rendering */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

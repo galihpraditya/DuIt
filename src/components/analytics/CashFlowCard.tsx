@@ -20,7 +20,7 @@ export const CashFlowCard: React.FC<CashFlowCardProps> = React.memo(({
   const { totalIncome, totalExpense, netCashFlow, expenseRatioPct, savingRatePct } = summary;
 
   return (
-    <div className="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+    <div className="glass-card rounded-2xl p-5 sm:p-6 space-y-4">
       <div className="flex items-center space-x-2.5">
         <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
           <Scale className="w-4 h-4" />
@@ -53,8 +53,8 @@ export const CashFlowCard: React.FC<CashFlowCardProps> = React.memo(({
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
             <span>{t.netCashFlowLabel}</span>
             {totalIncome > 0 && (
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">

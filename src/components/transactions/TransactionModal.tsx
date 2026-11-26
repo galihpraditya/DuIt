@@ -407,12 +407,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center space-x-1 cursor-pointer"
+                    className="p-2 min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] -mr-1 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center space-x-1 cursor-pointer"
                     title={t.cancelBtn}
                     aria-label={t.cancelBtn}
                   >
                     <X className="w-5 h-5" />
-                    <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-400">Esc</kbd>
+                    <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">Esc</kbd>
                   </button>
                 </div>
               </div>
@@ -512,7 +512,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveBatchItem(idx)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
+                            className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
                             title={t.delete}
                             aria-label={t.delete}
                           >
@@ -522,7 +522,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1">
                               {t.notesLabel}
                             </label>
                             <input
@@ -535,7 +535,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           </div>
 
                           <div>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1">
                               {t.amountLabel} (Rp)
                             </label>
                             <input
@@ -554,7 +554,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
                             {t.paymentMethodLabel}
                           </label>
                           <div className="flex flex-wrap gap-1.5">
@@ -623,7 +623,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           <button
                             type="button"
                             onClick={handleResetAmount}
-                            className="text-xs font-medium text-slate-400 hover:text-rose-500 flex items-center space-x-1 transition-colors cursor-pointer"
+                            className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center space-x-1 transition-colors cursor-pointer"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                             <span>{t.resetBtn}</span>
