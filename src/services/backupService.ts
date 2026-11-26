@@ -1,5 +1,6 @@
 import { db } from '../db/database';
 import { format } from 'date-fns';
+import { getCategoryType, getTransactionType } from '../utils/transactionHelpers';
 
 export async function exportDatabaseBackup() {
   const categories = await db.categories.toArray();
@@ -74,6 +75,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       name: c.name,
                       icon: c.icon,
                       color: c.color,
+                      type: getCategoryType(c),
                       budget_limit: c.budgetLimit || 0,
                       is_default: c.isDefault || false,
                       created_at: c.createdAt,
@@ -87,6 +89,7 @@ export async function importDatabaseBackup(file: File): Promise<{ success: boole
                       amount: tx.amount,
                       date: tx.date,
                       category_id: tx.categoryId,
+                      type: getTransactionType(tx),
                       notes: tx.notes || null,
                       payment_method: tx.paymentMethod || null,
                       tags: tx.tags || null,

@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { Zap } from 'lucide-react';
 import { formatIDR } from '../../utils/formatters';
-import type { Category, Transaction } from '../../types';
+import type { Category, Transaction, TransactionType } from '../../types';
+import { getTransactionType, filterCategoriesByType } from '../../utils/transactionHelpers';
 import { DynamicIcon } from '../common/IconPicker';
 import type { Language, Translations } from '../../constants/translations';
 
@@ -11,6 +12,7 @@ export interface QuickPresetItem {
   label: string;
   amount: number;
   categoryId: string;
+  type?: TransactionType;
   notes: string;
   isHabit?: boolean;
   frequency?: number;
@@ -20,6 +22,7 @@ interface QuickPresetsProps {
   categories: Category[];
   transactions?: Transaction[];
   onSelectPreset: (preset: QuickPresetItem) => void;
+  incomeEnabled?: boolean;
   hideNominals?: boolean;
   lang?: Language;
   t: Translations;
@@ -31,6 +34,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
   categories,
   transactions: fallbackTransactions,
   onSelectPreset,
+  incomeEnabled = false,
   hideNominals = false,
   lang = 'id',
   t,
@@ -41,7 +45,10 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
     []
   );
 
-  const transactions = recentTransactions ?? fallbackTransactions ?? EMPTY_TXS;
+  const transactions = useMemo(() => {
+    const raw = recentTransactions ?? fallbackTransactions ?? EMPTY_TXS;
+    return incomeEnabled ? raw : raw.filter((tx) => getTransactionType(tx) === 'expense');
+  }, [recentTransactions, fallbackTransactions, incomeEnabled]);
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
@@ -49,13 +56,15 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
 
   const presets: QuickPresetItem[] = useMemo(() => {
     if (!categories || categories.length === 0) return [];
+    const expenseCategories = filterCategoriesByType(categories, 'expense');
+    const starterPool = expenseCategories.length > 0 ? expenseCategories : categories;
 
     // Helper to find category by name keywords
     const findCat = (keywords: string[]) => {
-      const match = categories.find((c) =>
+      const match = starterPool.find((c) =>
         keywords.some((k) => c.name.toLowerCase().includes(k.toLowerCase()))
       );
-      return match?.id || categories[0]?.id || '';
+      return match?.id || starterPool[0]?.id || '';
     };
 
     const userHabits: QuickPresetItem[] = [];
@@ -65,17 +74,19 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
       const habitMap = new Map<string, {
         notes: string;
         categoryId: string;
+        type: TransactionType;
         amounts: number[];
         count: number;
         lastDate: string;
       }>();
 
       for (const tx of transactions) {
+        const txType = getTransactionType(tx);
         const rawNote = (tx.notes || '').trim();
         // Use note as key, or if empty, fallback to category name
         const cat = categoryMap.get(tx.categoryId);
-        const label = rawNote || (cat ? cat.name : 'Pengeluaran');
-        const key = `${label.toLowerCase()}__${tx.categoryId}`;
+        const label = rawNote || (cat ? cat.name : (txType === 'income' ? 'Pendapatan' : 'Pengeluaran'));
+        const key = `${txType}__${label.toLowerCase()}__${tx.categoryId}`;
 
         const existing = habitMap.get(key);
         if (existing) {
@@ -88,6 +99,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
           habitMap.set(key, {
             notes: label,
             categoryId: tx.categoryId,
+            type: txType,
             amounts: [tx.amount],
             count: 1,
             lastDate: tx.date,
@@ -113,6 +125,7 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
           label: h.notes,
           amount: mostCommonAmount,
           categoryId: h.categoryId,
+          type: h.type,
           notes: h.notes,
           isHabit: true,
           frequency: h.count,
@@ -151,8 +164,8 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
   if (presets.length === 0) return null;
 
   return (
-    <div className="flex items-center space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
-      <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400 pl-1 shrink-0">
+    <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center text-xs font-bold text-slate-600 dark:text-slate-400 pl-0.5 shrink-0">
         <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
         <span>{t.shortcuts}</span>
       </div>
@@ -161,8 +174,9 @@ export const QuickPresets: React.FC<QuickPresetsProps> = memo(({
         return (
           <button
             key={`${preset.label}-${index}`}
+            type="button"
             onClick={() => onSelectPreset(preset)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg glass-pill hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center space-x-2 active:scale-95 group cursor-pointer"
+            className="shrink-0 min-h-[40px] sm:min-h-[36px] text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center space-x-2 active:scale-95 group cursor-pointer"
             title={preset.isHabit ? (lang === 'en' ? `Recorded ${preset.frequency} times` : `Sering dicatat (${preset.frequency}x)`) : undefined}
           >
             {cat && (

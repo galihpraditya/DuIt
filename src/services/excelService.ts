@@ -1,77 +1,143 @@
-import type { Transaction, Category, PaymentMethodType } from '../types';
+import type { Transaction, Category, PaymentMethodType, TransactionType } from '../types';
 import { db } from '../db/database';
 import { format } from 'date-fns';
 import { generateId } from '../utils/formatters';
+import { getCategoryType, getTransactionType } from '../utils/transactionHelpers';
 
 export interface ExportDataParams {
   transactions: Transaction[];
   categories: Category[];
+  includeType?: boolean;
 }
 
-export async function exportTransactionsToExcel({ transactions, categories }: ExportDataParams) {
+export function parseImportType(rawValue: unknown): TransactionType {
+  const normalized = String(rawValue ?? '').trim().toLowerCase();
+  if (
+    normalized === 'income' ||
+    normalized === 'pendapatan' ||
+    normalized === 'pemasukan' ||
+    normalized === 'masuk' ||
+    normalized === 'in'
+  ) {
+    return 'income';
+  }
+  return 'expense';
+}
+
+export async function exportTransactionsToExcel({
+  transactions,
+  categories,
+  includeType = false,
+}: ExportDataParams) {
   // Dynamically load XLSX on demand to optimize initial bundle size
   const XLSX = await import('xlsx');
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
   // Sheet 1: Transactions Data
-  const transactionRows = transactions.map((t, idx) => ({
-    No: idx + 1,
-    'ID Transaksi': t.id,
-    Tanggal: format(new Date(t.date), 'yyyy-MM-dd HH:mm'),
-    Kategori: categoryMap.get(t.categoryId) || 'Lain-lain',
-    'Nominal (IDR)': t.amount,
-    'Metode Pembayaran': t.paymentMethod || '-',
-    Catatan: t.notes || '-',
-  }));
+  const transactionRows = transactions.map((t, idx) => {
+    const txType = getTransactionType(t);
+    const baseRow: Record<string, unknown> = {
+      No: idx + 1,
+      'ID Transaksi': t.id,
+      Tanggal: format(new Date(t.date), 'yyyy-MM-dd HH:mm'),
+    };
+    if (includeType) {
+      baseRow['Tipe'] = txType === 'income' ? 'Pendapatan' : 'Pengeluaran';
+    }
+    baseRow['Kategori'] = categoryMap.get(t.categoryId) || (txType === 'income' ? 'Pemasukan Lain' : 'Lain-lain');
+    baseRow['Nominal (IDR)'] = t.amount;
+    baseRow['Metode Pembayaran'] = t.paymentMethod || '-';
+    baseRow['Catatan'] = t.notes || '-';
+    return baseRow;
+  });
 
   const wsTransactions = XLSX.utils.json_to_sheet(transactionRows);
 
   // Column width styling
-  wsTransactions['!cols'] = [
-    { wch: 6 }, // No
-    { wch: 15 }, // ID
-    { wch: 18 }, // Tanggal
-    { wch: 22 }, // Kategori
-    { wch: 16 }, // Nominal
-    { wch: 18 }, // Metode
-    { wch: 35 }, // Catatan
-  ];
+  wsTransactions['!cols'] = includeType
+    ? [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 35 },
+      ]
+    : [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 35 },
+      ];
 
-  // Sheet 2: Category Summary
-  const categorySummaryMap = new Map<string, { count: number; total: number }>();
+  // Sheet 2: Category Summary (scoped by type so income & expense percentages stay meaningful)
+  const categorySummaryMap = new Map<string, { type: TransactionType; catName: string; count: number; total: number }>();
+  let totalExpense = 0;
+  let totalIncome = 0;
+
   transactions.forEach((t) => {
-    const catName = categoryMap.get(t.categoryId) || 'Lain-lain';
-    const existing = categorySummaryMap.get(catName) || { count: 0, total: 0 };
-    categorySummaryMap.set(catName, {
+    const txType = getTransactionType(t);
+    if (txType === 'income') {
+      totalIncome += t.amount;
+    } else {
+      totalExpense += t.amount;
+    }
+    const catName = categoryMap.get(t.categoryId) || (txType === 'income' ? 'Pemasukan Lain' : 'Lain-lain');
+    const key = `${txType}__${catName}`;
+    const existing = categorySummaryMap.get(key) || { type: txType, catName, count: 0, total: 0 };
+    categorySummaryMap.set(key, {
+      type: txType,
+      catName,
       count: existing.count + 1,
       total: existing.total + t.amount,
     });
   });
 
-  const totalExpense = transactions.reduce((acc, t) => acc + t.amount, 0);
-
-  const categorySummaryRows = Array.from(categorySummaryMap.entries()).map(([catName, stats]) => ({
-    Kategori: catName,
-    'Jumlah Transaksi': stats.count,
-    'Total Pengeluaran (IDR)': stats.total,
-    Persentase: totalExpense > 0 ? `${((stats.total / totalExpense) * 100).toFixed(1)}%` : '0%',
-  }));
+  const categorySummaryRows = Array.from(categorySummaryMap.values()).map((stats) => {
+    const denominator = stats.type === 'income' ? totalIncome : totalExpense;
+    const pct = denominator > 0 ? `${((stats.total / denominator) * 100).toFixed(1)}%` : '0%';
+    if (includeType) {
+      return {
+        Tipe: stats.type === 'income' ? 'Pendapatan' : 'Pengeluaran',
+        Kategori: stats.catName,
+        'Jumlah Transaksi': stats.count,
+        'Total Nominal (IDR)': stats.total,
+        Persentase: pct,
+      };
+    }
+    return {
+      Kategori: stats.catName,
+      'Jumlah Transaksi': stats.count,
+      'Total Pengeluaran (IDR)': stats.total,
+      Persentase: pct,
+    };
+  });
 
   const wsSummary = XLSX.utils.json_to_sheet(categorySummaryRows);
-  wsSummary['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 24 }, { wch: 14 }];
+  wsSummary['!cols'] = includeType
+    ? [{ wch: 14 }, { wch: 25 }, { wch: 18 }, { wch: 24 }, { wch: 14 }]
+    : [{ wch: 25 }, { wch: 18 }, { wch: 24 }, { wch: 14 }];
 
   // Create workbook
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, wsTransactions, 'Daftar Pengeluaran');
+  XLSX.utils.book_append_sheet(wb, wsTransactions, includeType ? 'Daftar Transaksi' : 'Daftar Pengeluaran');
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan Kategori');
 
-  const fileName = `DuIt_Expense_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+  const fileName = includeType
+    ? `DuIt_CashFlow_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`
+    : `DuIt_Expense_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
 
 export interface ParsedImportRow {
   date: string;
   amount: number;
+  type: TransactionType;
   categoryName: string;
   notes?: string;
   paymentMethod?: string;
@@ -136,9 +202,12 @@ export async function parseExcelFile(file: File): Promise<ParsedImportRow[]> {
         const results: ParsedImportRow[] = rawJson.map((row) => {
           // Flexible key lookup
           const dateVal = row['Tanggal'] || row['Date'] || row['tanggal'] || row['date'];
+          const typeVal = row['Tipe'] || row['Type'] || row['Jenis'] || row['tipe'] || row['type'] || row['jenis'];
+          const rowType = parseImportType(typeVal);
           const amountVal =
-            row['Nominal'] || row['Nominal (IDR)'] || row['Amount'] || row['amount'] || row['Pengeluaran'];
-          const categoryVal = row['Kategori'] || row['Category'] || row['kategori'] || 'Lain-lain';
+            row['Nominal'] || row['Nominal (IDR)'] || row['Amount'] || row['amount'] || row['Pengeluaran'] || row['Pendapatan'];
+          const categoryVal =
+            row['Kategori'] || row['Category'] || row['kategori'] || (rowType === 'income' ? 'Pemasukan Lain' : 'Lain-lain');
           const notesVal = row['Catatan'] || row['Keterangan'] || row['Notes'] || row['Description'] || '';
           const paymentVal = row['Metode Pembayaran'] || row['Metode'] || row['Payment Method'] || 'Tunai';
 
@@ -147,6 +216,7 @@ export async function parseExcelFile(file: File): Promise<ParsedImportRow[]> {
             return {
               date: new Date().toISOString(),
               amount: 0,
+              type: rowType,
               categoryName: String(categoryVal),
               notes: String(notesVal),
               paymentMethod: String(paymentVal),
@@ -164,7 +234,8 @@ export async function parseExcelFile(file: File): Promise<ParsedImportRow[]> {
           return {
             date: parsedDate.toISOString(),
             amount: parsedAmount,
-            categoryName: String(categoryVal).trim() || 'Lain-lain',
+            type: rowType,
+            categoryName: String(categoryVal).trim() || (rowType === 'income' ? 'Pemasukan Lain' : 'Lain-lain'),
             notes: finalNotes,
             paymentMethod: String(paymentVal).trim() === '-' ? 'Tunai' : String(paymentVal).trim(),
             isValid: true,
@@ -197,27 +268,30 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
   if (validRows.length === 0) return 0;
 
   const existingCategories = await db.categories.toArray();
-  const categoryMap = new Map<string, string>(); // categoryName.toLowerCase() -> id
-  existingCategories.forEach((c) => categoryMap.set(c.name.toLowerCase(), c.id));
+  const categoryMap = new Map<string, string>(); // `${type}__${categoryName.toLowerCase()}` -> id
+  existingCategories.forEach((c) => categoryMap.set(`${getCategoryType(c)}__${c.name.toLowerCase()}`, c.id));
 
   const newTransactions: Transaction[] = [];
   const newCategories: Category[] = [];
 
   for (const row of validRows) {
-    let catId = categoryMap.get(row.categoryName.toLowerCase());
+    const rowType = row.type || 'expense';
+    const catLookupKey = `${rowType}__${row.categoryName.toLowerCase()}`;
+    let catId = categoryMap.get(catLookupKey);
 
-    // Auto-create category if doesn't exist
+    // Auto-create category with matching type if doesn't exist
     if (!catId) {
       const newCat: Category = {
         id: generateId('cat'),
         name: row.categoryName,
-        icon: 'Tag',
-        color: '#6366f1',
+        icon: rowType === 'income' ? 'Briefcase' : 'Tag',
+        color: rowType === 'income' ? '#10b981' : '#6366f1',
+        type: rowType,
         createdAt: new Date().toISOString(),
       };
       await db.categories.add(newCat);
       newCategories.push(newCat);
-      categoryMap.set(row.categoryName.toLowerCase(), newCat.id);
+      categoryMap.set(catLookupKey, newCat.id);
       catId = newCat.id;
     }
 
@@ -230,6 +304,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
       amount: row.amount,
       date: row.date,
       categoryId: catId,
+      type: rowType,
       notes: row.notes,
       paymentMethod: matchedMethod,
       createdAt: new Date().toISOString(),
@@ -255,6 +330,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
                 name: c.name,
                 icon: c.icon,
                 color: c.color,
+                type: getCategoryType(c),
                 budget_limit: 0,
                 is_default: false,
                 created_at: c.createdAt,
@@ -270,6 +346,7 @@ export async function importTransactionsToDb(parsedRows: ParsedImportRow[]): Pro
                 amount: tx.amount,
                 date: tx.date,
                 category_id: tx.categoryId,
+                type: getTransactionType(tx),
                 notes: tx.notes || null,
                 payment_method: tx.paymentMethod || null,
                 created_at: tx.createdAt,

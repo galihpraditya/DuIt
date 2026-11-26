@@ -1,4 +1,4 @@
-import type { PaymentMethodType } from '../types';
+import type { PaymentMethodType, TransactionType } from '../types';
 
 const STORAGE_KEY_GROQ_KEY = 'duit_groq_api_key';
 export const GROQ_MODEL_ID = 'openai/gpt-oss-120b';
@@ -7,6 +7,7 @@ export const GROQ_FALLBACK_MODEL_ID = 'openai/gpt-oss-20b';
 export interface ParsedTransactionResult {
   amount: number;
   categoryId?: string;
+  type?: TransactionType;
   notes: string;
   paymentMethod: PaymentMethodType;
   dateIso?: string;
@@ -16,6 +17,7 @@ interface CategoryRef {
   id: string;
   name: string;
   isDefault?: boolean;
+  type?: TransactionType;
 }
 
 export const DEFAULT_CATEGORY_IDS = new Set([
@@ -27,7 +29,57 @@ export const DEFAULT_CATEGORY_IDS = new Set([
   'cat-health',
   'cat-education',
   'cat-others',
+  'cat-inc-salary',
+  'cat-inc-bonus',
+  'cat-inc-freelance',
+  'cat-inc-invest',
+  'cat-inc-others',
 ]);
+
+const INCOME_STRONG_KEYWORDS = [
+  'gaji', 'gajian', 'salary', 'paycheck', 'payroll',
+  'bonus', 'thr', 'insentif', 'komisi', 'commission',
+  'freelance', 'proyek', 'project fee', 'honor', 'fee', 'royalti',
+  'dividen', 'bunga bank', 'kupon', 'bagi hasil', 'profit', 'omzet', 'laba',
+  'pemasukan', 'pendapatan', 'income', 'uang masuk', 'transfer masuk',
+  'cashback', 'refund', 'reimburse', 'reimbursement', 'hadiah uang', 'angpao masuk',
+];
+
+const INCOME_VERB_PHRASES = [
+  'dapat uang', 'terima uang', 'terima transfer', 'diterima', 'masuk rekening', 'cair',
+];
+
+const EXPENSE_OVERRIDE_VERBS = [
+  'bayar', 'beli', 'belanja', 'jajan', 'ongkir', 'tagihan', 'cicilan', 'kirim uang', 'transfer ke',
+];
+
+export function detectTransactionType(text: string, allowIncome: boolean = false): TransactionType {
+  if (!allowIncome) return 'expense';
+  const lower = (text || '').toLowerCase();
+
+  for (const kw of INCOME_STRONG_KEYWORDS) {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?:^|\\s|,|\\.)${escaped}(?:$|\\s|,|\\.)`, 'i');
+    if (regex.test(lower)) {
+      return 'income';
+    }
+  }
+
+  const hasIncomeVerb = INCOME_VERB_PHRASES.some((phrase) => lower.includes(phrase));
+  if (hasIncomeVerb && !EXPENSE_OVERRIDE_VERBS.some((v) => lower.includes(v))) {
+    return 'income';
+  }
+
+  return 'expense';
+}
+
+const INCOME_CATEGORY_KEYWORDS: Record<'salary' | 'bonus' | 'freelance' | 'invest' | 'others', string[]> = {
+  salary: ['gaji', 'gajian', 'salary', 'payroll', 'paycheck', 'upah', 'honor bulanan'],
+  bonus: ['bonus', 'thr', 'insentif', 'tunjangan', 'hadiah', 'angpao', 'cashback'],
+  freelance: ['freelance', 'proyek', 'project', 'fee', 'komisi', 'jualan', 'usaha', 'omzet', 'laba', 'klien', 'jasa'],
+  invest: ['dividen', 'bunga', 'saham', 'reksadana', 'deposito', 'obligasi', 'profit', 'trading', 'kripto', 'crypto', 'investasi'],
+  others: ['refund', 'reimburse', 'reimbursement', 'pemasukan', 'pendapatan', 'terima', 'dapat', 'lain'],
+};
 
 export const CUSTOM_CATEGORY_DOMAIN_RULES = [
   {
@@ -334,14 +386,52 @@ class AiService {
   resolveCategory(
     suggestedId: string | undefined,
     itemText: string,
-    categories: CategoryRef[]
+    categories: CategoryRef[],
+    targetType: TransactionType = 'expense'
   ): string {
-    if (!categories || categories.length === 0) return 'cat-others';
+    const typedCats = categories.filter((c) => (c.type === 'income' ? 'income' : 'expense') === targetType);
+    const pool = typedCats.length > 0 ? typedCats : categories;
+    if (!pool || pool.length === 0) return targetType === 'income' ? 'cat-inc-others' : 'cat-others';
 
     const textClean = (itemText || '').toLowerCase().trim();
 
+    if (targetType === 'income') {
+      if (suggestedId) {
+        const exact = pool.find((c) => c.id === suggestedId.trim());
+        if (exact && exact.id !== 'cat-inc-others') return exact.id;
+      }
+
+      let bestIncKey: keyof typeof INCOME_CATEGORY_KEYWORDS | null = null;
+      let maxIncScore = 0;
+      for (const [key, words] of Object.entries(INCOME_CATEGORY_KEYWORDS)) {
+        let score = 0;
+        for (const w of words) {
+          if (textClean.includes(w)) score += w.length;
+        }
+        if (score > maxIncScore) {
+          maxIncScore = score;
+          bestIncKey = key as keyof typeof INCOME_CATEGORY_KEYWORDS;
+        }
+      }
+
+      if (bestIncKey && maxIncScore > 0) {
+        const patterns: Record<keyof typeof INCOME_CATEGORY_KEYWORDS, RegExp> = {
+          salary: /salary|gaji|upah/i,
+          bonus: /bonus|thr|hadiah|insentif/i,
+          freelance: /freelance|usaha|bisnis|proyek/i,
+          invest: /invest|dividen|saham|bunga/i,
+          others: /other|lain/i,
+        };
+        const matched = pool.find((c) => patterns[bestIncKey!].test(c.id) || patterns[bestIncKey!].test(c.name));
+        if (matched) return matched.id;
+      }
+
+      const incOthers = pool.find((c) => c.id === 'cat-inc-others' || /lain|other/i.test(c.name));
+      return incOthers?.id || pool[0].id;
+    }
+
     // Pisahkan kategori kustom pengguna (non-default) dari kategori bawaan
-    const customCategories = categories.filter(
+    const customCategories = pool.filter(
       (c) => !DEFAULT_CATEGORY_IDS.has(c.id) || c.isDefault === false
     );
 
@@ -390,7 +480,7 @@ class AiService {
     }
 
     // 3. PRIORITAS 3: Pencocokan langsung nama lengkap semua kategori
-    for (const cat of categories) {
+    for (const cat of pool) {
       const name = cat.name.toLowerCase().trim();
       if (name.length >= 3) {
         const regex = new RegExp(`(?:^|\\s|,|\\.)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\s|,|\\.)`, 'i');
@@ -404,13 +494,13 @@ class AiService {
     if (suggestedId) {
       const cleanSuggested = suggestedId.trim();
       // Cocok langsung dengan id spesifik (bukan cat-others)
-      const exactId = categories.find((c) => c.id === cleanSuggested);
+      const exactId = pool.find((c) => c.id === cleanSuggested);
       if (exactId && cleanSuggested !== 'cat-others' && !/lain|other/i.test(exactId.name)) {
         return exactId.id;
       }
 
       // Cocok dengan nama kategori spesifik (bukan kategori lain-lain)
-      const byName = categories.find(
+      const byName = pool.find(
         (c) => c.name.toLowerCase().trim() === cleanSuggested.toLowerCase()
       );
       if (byName && byName.id !== 'cat-others' && !/lain|other/i.test(byName.name)) {
@@ -418,7 +508,7 @@ class AiService {
       }
 
       // Cocok dengan kemiripan slug spesifik
-      const bySlug = categories.find(
+      const bySlug = pool.find(
         (c) =>
           (c.id.toLowerCase().includes(cleanSuggested.toLowerCase()) ||
           cleanSuggested.toLowerCase().includes(c.id.toLowerCase())) &&
@@ -462,7 +552,7 @@ class AiService {
 
       const pattern = archetypePatterns[bestArchetype];
       if (pattern) {
-        const matched = categories.find(
+        const matched = pool.find(
           (c) => pattern.test(c.id) || pattern.test(c.name)
         );
         if (matched) return matched.id;
@@ -472,17 +562,17 @@ class AiService {
     // 6. Jika AI menyarankan ID dan valid (termasuk cat-others jika memang tidak cocok kategori lain)
     if (suggestedId) {
       const cleanSuggested = suggestedId.trim();
-      const exact = categories.find((c) => c.id === cleanSuggested);
+      const exact = pool.find((c) => c.id === cleanSuggested);
       if (exact) return exact.id;
-      const byName = categories.find((c) => c.name.toLowerCase().trim() === cleanSuggested.toLowerCase());
+      const byName = pool.find((c) => c.name.toLowerCase().trim() === cleanSuggested.toLowerCase());
       if (byName) return byName.id;
     }
 
     // 7. Default fallback: UTAMAKAN kategori "Lain-lain" / "Others", JANGAN pernah ke "cat-food"
-    const othersCat = categories.find(
+    const othersCat = pool.find(
       (c) => c.id === 'cat-others' || /lain|other|umum|general|misc|sisa/i.test(c.name)
     );
-    return othersCat?.id || categories[categories.length - 1]?.id || categories[0]?.id;
+    return othersCat?.id || pool[pool.length - 1]?.id || pool[0]?.id;
   }
 
   /**
@@ -490,27 +580,38 @@ class AiService {
    */
   async parseNaturalTransactions(
     text: string,
-    categories: CategoryRef[]
+    categories: CategoryRef[],
+    options: { allowIncome?: boolean } = {}
   ): Promise<ParsedTransactionResult[]> {
     const key = this.getApiKey();
     const cleanInput = text.trim();
     if (!cleanInput) return [];
+
+    const allowIncome = Boolean(options.allowIncome);
+    const availableCats = allowIncome
+      ? categories
+      : categories.filter((c) => (c.type === 'income' ? 'income' : 'expense') === 'expense');
 
     const nowIso = new Date().toISOString();
 
     // Jika ada API Key, coba panggil Groq AI
     if (key) {
       const categoriesJson = JSON.stringify(
-        categories.map((c) => ({ id: c.id, name: c.name }))
+        availableCats.map((c) => ({ id: c.id, name: c.name, type: c.type === 'income' ? 'income' : 'expense' }))
       );
 
-      const systemPrompt = `You are a strict, ultra-fast financial transaction extractor for the DuIt expense tracker app.
-Extract ALL distinct expenses mentioned in the user statement (e.g. "bakso 10k, bensin 30k, mie ayam 7k" -> 3 separate items).
+      const typeRule = allowIncome
+        ? `"type": "expense" or "income" (use "income" ONLY for money received such as gaji/salary, bonus, THR, freelance income, dividend, refund, cash inflow; otherwise "expense"). Match "categoryId" with the same type.`
+        : `"type": ALWAYS "expense".`;
+
+      const systemPrompt = `You are a strict, ultra-fast financial transaction extractor for the DuIt finance tracker app.
+Extract ALL distinct transactions mentioned in the user statement (e.g. "bakso 10k, bensin 30k, mie ayam 7k" -> 3 separate items).
 
 Output MUST be a valid JSON object matching this schema:
 {
   "transactions": [
     {
+      "type": "expense",
       "amount": 25000,
       "categoryId": "cat-food",
       "notes": "Bakso",
@@ -527,28 +628,15 @@ Available payment methods:
 ["Tunai", "E-Wallet", "Transfer Bank", "Kartu Debit", "Kartu Kredit", "Lainnya"]
 
 Rules:
-1. Extract ALL distinct expenses mentioned in the user statement (e.g. "bakso 10k, bensin 30k, mie ayam 7k" -> 3 separate items).
-2. Convert all Indonesian / English amounts to integer:
+1. Extract ALL distinct transactions mentioned in the user statement.
+2. ${typeRule}
+3. Convert all Indonesian / English amounts to integer:
    - "10k" / "10rb" / "sepuluh ribu" -> 10000
-   - "30k" / "30rb" -> 30000
-   - "15.000" / "15 rb" -> 15000
    - "1.5jt" / "1,5 juta" -> 1500000
-   - "7k" / "7rb" -> 7000
-3. DEFAULT paymentMethod is ALWAYS "Tunai", UNLESS the user explicitly states another payment method (e.g. "qris", "bca", "transfer", "kartu debit", "gopay", "ovo", "dana", "kartu kredit").
-4. "categoryId" MUST be the exact "id" string from the available categories list above.
-   CRITICAL PRIORITY: If the user has defined CUSTOM categories in the available list (e.g. for Investment/Investasi/Saham, Charity/Zakat/Sedekah, Pets/Kucing/Hewan, Sports/Gym/Fitness, Skincare/Perawatan, Children/Family, Smoking/Rokok, etc.), ALWAYS prioritize assigning the item to that custom category ID!
-   GENERAL GUIDELINES:
-   - Pulsa, kuota, paket data, wifi, listrik/pln, air/pdam, sewa kos/kontrakan, cicilan -> pick bills/tagihan category (e.g. "cat-bills")
-   - Servis motor/mobil, ganti oli, cuci motor/mobil, bensin/pertalite/pertamax, parkir, tol, ojol/gojek/grab -> pick transport category (e.g. "cat-transport")
-   - Sabun, detergen, odol, sampo, shampo, sembako, beras, minyak, galon, baju, celana, sepatu, tas, belanja supermarket/minimarket/online -> pick shopping category (e.g. "cat-shopping")
-   - Makanan, minuman, kopi, cemilan, makan siang, nasi, resto, cafe -> pick food category (e.g. "cat-food")
-   - Bioskop, nonton film, game, topup diamond, futsal, wisata, liburan -> pick entertainment category (e.g. "cat-entertainment")
-   - Obat, vitamin, apotek, dokter, klinik, periksa kesehatan -> pick health category (e.g. "cat-health")
-   - Buku, atk, spp, les, kuliah, kursus -> pick education category (e.g. "cat-education")
-   - Sedekah, zakat, infaq, laundry, potong rambut/cukur, salon, skincare, kado, biaya admin bank -> pick others/lain-lain category (e.g. "cat-others" unless a custom category exists)
-   - DO NOT return category name, DO NOT invent new IDs.
-5. "notes": Clean item or merchant name (Capitalize first letter, e.g. "Bakso", "Bensin", "Mie ayam").
-6. "dateIso": Use "${nowIso}" unless relative dates like "kemarin" or "tadi pagi" are mentioned.`;
+4. DEFAULT paymentMethod is ALWAYS "Tunai", UNLESS the user explicitly states another payment method (e.g. "qris", "bca", "transfer", "kartu debit", "gopay", "ovo", "dana", "kartu kredit").
+5. "categoryId" MUST be the exact "id" string from the available categories list above matching the transaction type.
+6. "notes": Clean item or source name (Capitalize first letter).
+7. "dateIso": Use "${nowIso}" unless relative dates like "kemarin" or "tadi pagi" are mentioned.`;
 
       // Coba model utama, jika gagal atau rate limit coba model cadangan
       const modelsToTry = [GROQ_MODEL_ID, GROQ_FALLBACK_MODEL_ID];
@@ -579,13 +667,23 @@ Rules:
 
               const validResults: ParsedTransactionResult[] = items
                 .filter((item) => item && typeof item.amount === 'number' && item.amount > 0)
-                .map((item) => ({
-                  amount: Math.round(item.amount),
-                  categoryId: this.resolveCategory(item.categoryId, item.notes || cleanInput, categories),
-                  notes: (item.notes || 'Pengeluaran').trim(),
-                  paymentMethod: (item.paymentMethod || 'Tunai') as PaymentMethodType,
-                  dateIso: item.dateIso || nowIso,
-                }));
+                .map((item) => {
+                  const txType: TransactionType =
+                    allowIncome && item.type === 'income' ? 'income' : 'expense';
+                  return {
+                    type: txType,
+                    amount: Math.round(item.amount),
+                    categoryId: this.resolveCategory(
+                      item.categoryId,
+                      item.notes || cleanInput,
+                      availableCats,
+                      txType
+                    ),
+                    notes: (item.notes || (txType === 'income' ? 'Pendapatan' : 'Pengeluaran')).trim(),
+                    paymentMethod: (item.paymentMethod || 'Tunai') as PaymentMethodType,
+                    dateIso: item.dateIso || nowIso,
+                  };
+                });
 
               if (validResults.length > 0) {
                 return validResults;
@@ -594,7 +692,6 @@ Rules:
           } else {
             const errData = await response.json().catch(() => null);
             console.warn(`[AiService] Groq API model ${model} error:`, errData || response.status);
-            // Jika 429 atau error sementara, lanjut coba model berikutnya
           }
         } catch (err) {
           console.warn(`[AiService] Groq API call failed for ${model}:`, err);
@@ -603,7 +700,7 @@ Rules:
     }
 
     // Fallback: Local rule-based extraction (bekerja 100% offline & instan)
-    return this.fallbackLocalParser(cleanInput, categories, nowIso);
+    return this.fallbackLocalParser(cleanInput, availableCats, nowIso, allowIncome);
   }
 
   /**
@@ -668,7 +765,8 @@ Rules:
   private fallbackLocalParser(
     input: string,
     categories: CategoryRef[],
-    nowIso: string
+    nowIso: string,
+    allowIncome: boolean = false
   ): ParsedTransactionResult[] {
     // 1. Coba split berdasarkan koma, titik koma, baris baru, atau kata "dan"
     let segments = input
@@ -704,6 +802,8 @@ Rules:
 
       const amount = parsedAmount.amount;
 
+      const txType = detectTransactionType(seg, allowIncome);
+
       // Bersihkan teks catatan dari nominal dan kata sambung / metode pembayaran
       const notesClean = seg
         .replace(parsedAmount.matchedText, '')
@@ -713,7 +813,7 @@ Rules:
 
       const notes = notesClean
         ? notesClean.charAt(0).toUpperCase() + notesClean.slice(1)
-        : 'Pengeluaran';
+        : txType === 'income' ? 'Pendapatan' : 'Pengeluaran';
 
       // Default pembayaran adalah Tunai, kecuali disebutkan khusus
       let paymentMethod: PaymentMethodType = 'Tunai';
@@ -754,9 +854,10 @@ Rules:
       }
 
       // Deteksi kategori otomatis menggunakan resolver semantik yang akurat
-      const categoryId = this.resolveCategory(undefined, seg, categories);
+      const categoryId = this.resolveCategory(undefined, seg, categories, txType);
 
       results.push({
+        type: txType,
         amount,
         categoryId,
         notes,

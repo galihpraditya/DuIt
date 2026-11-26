@@ -1,7 +1,15 @@
 // src/services/syncService.ts
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { db, DEFAULT_CATEGORIES } from '../db/database';
+import { db, DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../db/database';
 import type { Category, Transaction, Budget, RecurringExpense } from '../types';
+import {
+  mapCloudCategoryToLocal,
+  mapCloudTransactionToLocal,
+  findSameTypeCategoryMatch,
+  mapLocalCategoryToCloudPayload,
+  mapLocalTransactionToCloudPayload,
+} from './syncMappers';
+import { getCategoryType, getTransactionType } from '../utils/transactionHelpers';
 
 let ongoingSync: Promise<{ success: boolean; error?: string }> | null = null;
 
@@ -30,6 +38,17 @@ export function markCategoryDeleted(id: string) {
     localStorage.setItem(DELETED_CATS_KEY, JSON.stringify(Array.from(set)));
   } catch (e) {
     console.warn('[SyncService] Failed to mark category as deleted in localStorage:', e);
+  }
+}
+
+export function unmarkCategoryDeleted(id: string) {
+  try {
+    const set = getDeletedCategoryIds();
+    if (set.delete(id)) {
+      localStorage.setItem(DELETED_CATS_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch (e) {
+    console.warn('[SyncService] Failed to unmark category as deleted in localStorage:', e);
   }
 }
 
@@ -188,30 +207,48 @@ async function upsertSingleChunk(
   ) {
     console.warn(`[SyncService] FK constraint error (23503) on ${table}. Self-healing orphaned category IDs...`);
 
-    // Pastikan kategori jangkar 'cat-others' telah terdaftar di Supabase untuk user ini
+    // Pastikan kategori jangkar 'cat-others' & 'cat-inc-others' terdaftar di Supabase untuk user ini
     const sampleUserId = chunk[0]?.user_id;
+    const hasIncomeItems = chunk.some((item) => item?.type === 'income');
     if (sampleUserId) {
       try {
-        let anchorCat: any = {
-          id: 'cat-others',
-          user_id: sampleUserId,
-          name: 'Lain-lain',
-          icon: 'CircleEllipsis',
-          color: '#64748b',
-          budget_limit: 0,
-          is_default: true,
-          created_at: new Date().toISOString(),
-        };
-        anchorCat = sanitizePayload('categories', [anchorCat])[0];
-        await supabase.from('categories').upsert([anchorCat], { onConflict: conflictMode });
+        const anchors: any[] = [
+          {
+            id: 'cat-others',
+            user_id: sampleUserId,
+            name: 'Lain-lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'expense',
+            budget_limit: 0,
+            is_default: true,
+            created_at: new Date().toISOString(),
+          },
+        ];
+        if (hasIncomeItems) {
+          anchors.push({
+            id: 'cat-inc-others',
+            user_id: sampleUserId,
+            name: 'Pemasukan Lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'income',
+            budget_limit: 0,
+            is_default: true,
+            created_at: new Date().toISOString(),
+          });
+        }
+        const sanitizedAnchors = sanitizePayload('categories', anchors);
+        await supabase.from('categories').upsert(sanitizedAnchors, { onConflict: conflictMode });
       } catch (anchorErr) {
-        console.warn('[SyncService] Failed to auto-seed anchor cat-others in cloud:', anchorErr);
+        console.warn('[SyncService] Failed to auto-seed anchor categories in cloud:', anchorErr);
       }
     }
 
     const healedChunk = chunk.map((item) => ({
       ...item,
-      category_id: table === 'budgets' ? null : 'cat-others',
+      category_id:
+        table === 'budgets' ? null : item?.type === 'income' ? 'cat-inc-others' : 'cat-others',
     }));
 
     const healedResult = await doUpsert(healedChunk, conflictMode);
@@ -232,6 +269,7 @@ async function upsertSingleChunk(
 
 export const syncService = {
   markCategoryDeleted,
+  unmarkCategoryDeleted,
   getDeletedCategoryIds,
 
   /**
@@ -289,7 +327,7 @@ export const syncService = {
     const localCats = await db.categories.toArray();
     const deletedIds = getDeletedCategoryIds();
 
-    // Pastikan kategori jangkar 'cat-others' selalu terdaftar di local database
+    // Pastikan kategori jangkar 'cat-others' & 'cat-inc-others' terdaftar di local database
     const hasOthers = localCats.some((c) => c.id === 'cat-others');
     if (!hasOthers) {
       const defaultOthers: Category = {
@@ -297,6 +335,7 @@ export const syncService = {
         name: 'Lain-lain',
         icon: 'CircleEllipsis',
         color: '#64748b',
+        type: 'expense',
         isDefault: true,
         order: 999,
         createdAt: new Date().toISOString(),
@@ -304,22 +343,29 @@ export const syncService = {
       await db.categories.put(defaultOthers);
       localCats.push(defaultOthers);
     }
+    const hasIncOthers = localCats.some((c) => c.id === 'cat-inc-others');
+    if (!hasIncOthers && !deletedIds.has('cat-inc-others')) {
+      const defaultIncOthers: Category = {
+        id: 'cat-inc-others',
+        name: 'Pemasukan Lain',
+        icon: 'CircleEllipsis',
+        color: '#64748b',
+        type: 'income',
+        isDefault: true,
+        order: 999,
+        createdAt: new Date().toISOString(),
+      };
+      await db.categories.put(defaultIncOthers);
+      localCats.push(defaultIncOthers);
+    }
 
     if (cloudCats && cloudCats.length > 0) {
       const cloudIds = new Set(cloudCats.map((c) => c.id));
       const localMap = new Map(localCats.map((l) => [l.id, l]));
 
-      // 1. Rekonsiliasi Kategori dengan Nama Sama (Case-insensitive trim):
-      // Jika lokal memiliki kategori bernama sama dengan cloud tapi beda ID (misal dari guest/import),
-      // alihkan transaksi lokal ke ID cloud dan hapus duplikat lokalnya.
-      const cloudByName = new Map<string, string>();
-      cloudCats.forEach((c) => {
-        if (c.name) cloudByName.set(c.name.trim().toLowerCase(), c.id);
-      });
-
+      // 1. Rekonsiliasi Kategori dengan Nama & Tipe Sama (Case-insensitive trim)
       for (const localCat of localCats) {
-        const normName = (localCat.name || '').trim().toLowerCase();
-        const matchedCloudId = cloudByName.get(normName);
+        const matchedCloudId = findSameTypeCategoryMatch(localCat, cloudCats);
         if (matchedCloudId && matchedCloudId !== localCat.id) {
           const relTxs = await db.transactions.where('categoryId').equals(localCat.id).toArray();
           for (const tx of relTxs) {
@@ -348,24 +394,9 @@ export const syncService = {
         'cat-education': 500000,
       };
 
-      const catObjects: Category[] = cloudCats.map((cc) => {
-        const localExisting = localMap.get(cc.id);
-        const rawLimit = cc.budget_limit ? Number(cc.budget_limit) : undefined;
-        // Jika nilai limit di cloud masih bernilai dummy bawaan template, bersihkan menjadi undefined
-        const isLegacyDummy = rawLimit !== undefined && legacyDummyBudgetMap[cc.id] === rawLimit;
-        const effectiveLimit = isLegacyDummy ? undefined : rawLimit;
-
-        return {
-          id: cc.id,
-          name: cc.name || 'Kategori',
-          icon: cc.icon || 'Tag',
-          color: cc.color || '#64748b',
-          budgetLimit: effectiveLimit,
-          isDefault: Boolean(cc.is_default),
-          order: typeof cc.order_index === 'number' ? cc.order_index : (localExisting?.order ?? 0),
-          createdAt: cc.created_at || new Date().toISOString(),
-        };
-      });
+      const catObjects: Category[] = cloudCats.map((cc) =>
+        mapCloudCategoryToLocal(cc, localMap.get(cc.id))
+      );
       await db.categories.bulkPut(catObjects);
 
       // Bersihkan batas anggaran dummy di cloud jika terdeteksi
@@ -380,6 +411,7 @@ export const syncService = {
           name: cc.name || 'Kategori',
           icon: cc.icon || 'Tag',
           color: cc.color || '#64748b',
+          type: cc.type === 'income' ? 'income' : 'expense',
           budget_limit: 0,
           is_default: Boolean(cc.is_default),
           order_index: typeof cc.order_index === 'number' ? cc.order_index : 0,
@@ -404,34 +436,14 @@ export const syncService = {
       );
 
       if (unsyncedLocal.length > 0) {
-        const payload = unsyncedLocal.map((cat) => ({
-          id: cat.id,
-          user_id: userId,
-          name: cat.name || 'Kategori',
-          icon: cat.icon || 'Tag',
-          color: cat.color || '#64748b',
-          budget_limit: cat.budgetLimit || 0,
-          is_default: Boolean(cat.isDefault),
-          order_index: typeof cat.order === 'number' ? cat.order : 0,
-          created_at: cat.createdAt || new Date().toISOString(),
-        }));
+        const payload = unsyncedLocal.map((cat) => mapLocalCategoryToCloudPayload(cat, userId));
         await safeUpsert('categories', payload);
       }
     } else if (localCats.length > 0) {
       // Jika cloud masih kosong, upload seluruh data lokal ke cloud (kecuali yang ditandai terhapus)
       const validLocalCats = localCats.filter((cat) => !deletedIds.has(cat.id));
       if (validLocalCats.length > 0) {
-        const payload = validLocalCats.map((cat) => ({
-          id: cat.id,
-          user_id: userId,
-          name: cat.name || 'Kategori',
-          icon: cat.icon || 'Tag',
-          color: cat.color || '#64748b',
-          budget_limit: cat.budgetLimit || 0,
-          is_default: Boolean(cat.isDefault),
-          order_index: typeof cat.order === 'number' ? cat.order : 0,
-          created_at: cat.createdAt || new Date().toISOString(),
-        }));
+        const payload = validLocalCats.map((cat) => mapLocalCategoryToCloudPayload(cat, userId));
         await safeUpsert('categories', payload);
       }
     }
@@ -458,25 +470,27 @@ export const syncService = {
     // Kumpulan kategori valid (lokal) untuk memastikan transaksi tidak mereferensi kategori kosong
     const availableCats = await db.categories.toArray();
     const validCatIds = new Set(availableCats.map((c) => c.id));
-    const fallbackCatId = validCatIds.has('cat-others') ? 'cat-others' : (availableCats[0]?.id || 'cat-others');
+    const catTypeMap = new Map(availableCats.map((c) => [c.id, getCategoryType(c)]));
+    const localTxMap = new Map(localTxs.map((l) => [l.id, l]));
+    const fallbackExpenseCatId = validCatIds.has('cat-others') ? 'cat-others' : (availableCats[0]?.id || 'cat-others');
+    const fallbackIncomeCatId = validCatIds.has('cat-inc-others') ? 'cat-inc-others' : fallbackExpenseCatId;
 
     if (cloudTxs && cloudTxs.length > 0) {
       // 1. Simpan/perbarui data dari cloud ke lokal secara atomic dalam 1 transaksi IndexedDB
       const txObjects: Transaction[] = cloudTxs.map((ctx) => {
+        const localExisting = localTxMap.get(ctx.id);
+        const inferredIsIncome = ctx.type === 'income' || (ctx.type == null && localExisting?.type === 'income');
+        const fallbackForType = inferredIsIncome ? fallbackIncomeCatId : fallbackExpenseCatId;
         const effectiveCatId = ctx.category_id && validCatIds.has(ctx.category_id)
           ? ctx.category_id
-          : fallbackCatId;
+          : fallbackForType;
 
-        return {
-          id: ctx.id,
-          amount: Number(ctx.amount) || 0,
-          date: ctx.date || new Date().toISOString(),
-          categoryId: effectiveCatId,
-          notes: ctx.notes || undefined,
-          paymentMethod: ctx.payment_method || undefined,
-          tags: Array.isArray(ctx.tags) ? ctx.tags : undefined,
-          createdAt: ctx.created_at || new Date().toISOString(),
-        };
+        return mapCloudTransactionToLocal(
+          ctx,
+          effectiveCatId,
+          localExisting,
+          catTypeMap.get(effectiveCatId)
+        );
       });
       await db.transactions.bulkPut(txObjects);
 
@@ -484,42 +498,24 @@ export const syncService = {
       const unsyncedLocal = localTxs.filter((l) => !cloudIds.has(l.id));
       if (unsyncedLocal.length > 0) {
         const payload = unsyncedLocal.map((tx) => {
+          const fallbackForType = getTransactionType(tx) === 'income' ? fallbackIncomeCatId : fallbackExpenseCatId;
           const effectiveCatId = tx.categoryId && validCatIds.has(tx.categoryId)
             ? tx.categoryId
-            : fallbackCatId;
+            : fallbackForType;
 
-          return {
-            id: tx.id,
-            user_id: userId,
-            amount: Number(tx.amount) || 0,
-            date: tx.date || new Date().toISOString(),
-            category_id: effectiveCatId,
-            notes: tx.notes || null,
-            payment_method: tx.paymentMethod || null,
-            tags: tx.tags || null,
-            created_at: tx.createdAt || new Date().toISOString(),
-          };
+          return mapLocalTransactionToCloudPayload(tx, userId, effectiveCatId);
         });
         await safeUpsert('transactions', payload);
       }
     } else if (localTxs.length > 0) {
       // Jika cloud masih kosong, unggah seluruh transaksi lokal
       const payload = localTxs.map((tx) => {
+        const fallbackForType = getTransactionType(tx) === 'income' ? fallbackIncomeCatId : fallbackExpenseCatId;
         const effectiveCatId = tx.categoryId && validCatIds.has(tx.categoryId)
           ? tx.categoryId
-          : fallbackCatId;
+          : fallbackForType;
 
-        return {
-          id: tx.id,
-          user_id: userId,
-          amount: Number(tx.amount) || 0,
-          date: tx.date || new Date().toISOString(),
-          category_id: effectiveCatId,
-          notes: tx.notes || null,
-          payment_method: tx.paymentMethod || null,
-          tags: tx.tags || null,
-          created_at: tx.createdAt || new Date().toISOString(),
-        };
+        return mapLocalTransactionToCloudPayload(tx, userId, effectiveCatId);
       });
       await safeUpsert('transactions', payload);
     }
@@ -684,17 +680,7 @@ export const syncService = {
   async pushTransaction(tx: Transaction, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      const payload = {
-        id: tx.id,
-        user_id: userId,
-        amount: Number(tx.amount) || 0,
-        date: tx.date || new Date().toISOString(),
-        category_id: tx.categoryId,
-        notes: tx.notes || null,
-        payment_method: tx.paymentMethod || null,
-        tags: tx.tags || null,
-        created_at: tx.createdAt || new Date().toISOString(),
-      };
+      const payload = mapLocalTransactionToCloudPayload(tx, userId, tx.categoryId);
       await safeUpsert('transactions', [payload]);
     } catch (e) {
       console.warn('[SyncService] pushTransaction error:', e);
@@ -720,17 +706,7 @@ export const syncService = {
   async pushCategory(cat: Category, userId: string) {
     if (!isSupabaseConfigured || !userId) return;
     try {
-      const payload = {
-        id: cat.id,
-        user_id: userId,
-        name: cat.name || 'Kategori',
-        icon: cat.icon || 'Tag',
-        color: cat.color || '#64748b',
-        budget_limit: cat.budgetLimit || 0,
-        is_default: Boolean(cat.isDefault),
-        order_index: typeof cat.order === 'number' ? cat.order : 0,
-        created_at: cat.createdAt || new Date().toISOString(),
-      };
+      const payload = mapLocalCategoryToCloudPayload(cat, userId);
       await safeUpsert('categories', [payload]);
     } catch (e) {
       console.warn('[SyncService] pushCategory error:', e);
@@ -796,7 +772,7 @@ export const syncService = {
       await db.budgets.clear();
       await db.recurringExpenses.clear();
       await db.categories.clear();
-      await db.categories.bulkPut(DEFAULT_CATEGORIES);
+      await db.categories.bulkPut([...DEFAULT_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
     });
   }
 };

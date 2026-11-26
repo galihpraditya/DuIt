@@ -1,8 +1,17 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, initializeDefaultData, DEFAULT_CATEGORIES } from './db/database';
+import { db, initializeDefaultData, DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from './db/database';
 import type { Category, CategorySortMode, Transaction } from './types';
+import {
+  getCategoryType,
+  getTransactionType,
+  filterCategoriesByType,
+  filterTransactionsByType,
+  calculateCashFlowSummary,
+  isIncomeTrackingEnabled,
+  setIncomeTrackingEnabled,
+} from './utils/transactionHelpers';
 import { sortCategories, getStoredCategorySortMode, setStoredCategorySortMode } from './utils/categorySorter';
 import { Navbar } from './components/layout/Navbar';
 import { BottomNav } from './components/layout/BottomNav';
@@ -17,7 +26,7 @@ import { authService, type UserProfile } from './services/authService';
 import { syncService } from './services/syncService';
 import { reminderService } from './services/reminderService';
 import { themeService } from './services/themeService';
-import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, Clock } from 'lucide-react';
+import { Loader2, Calendar, ChevronLeft, ChevronRight, Banknote, Layers, Eye, EyeOff, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
@@ -57,7 +66,7 @@ const MonthYearPickerModal = lazy(() =>
 const ViewLoaderFallback = () => (
   <div className="flex flex-col items-center justify-center py-20 space-y-3">
     <Loader2 className="w-7 h-7 text-emerald-500 animate-spin" />
-    <span className="text-xs text-slate-400 font-medium">Memuat tampilan...</span>
+    <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Memuat tampilan...</span>
   </div>
 );
 
@@ -184,6 +193,18 @@ export function App() {
       return next;
     });
   }, []);
+
+  // Optional Income Tracking Mode State (persisted in localStorage)
+  const [incomeEnabled, setIncomeEnabled] = useState<boolean>(() => isIncomeTrackingEnabled());
+
+  const handleToggleIncomeEnabled = useCallback(
+    (next: boolean) => {
+      setIncomeEnabled(next);
+      setIncomeTrackingEnabled(next);
+      showToast(next ? t.incomeFeatureEnabledToast : t.incomeFeatureDisabledToast, 'info');
+    },
+    [showToast, t.incomeFeatureEnabledToast, t.incomeFeatureDisabledToast]
+  );
 
   // Handle Android Native Hardware Back Button (Capacitor)
   useEffect(() => {
@@ -399,12 +420,26 @@ export function App() {
           const end = new Date(y, m, 0, 23, 59, 59, 999).toISOString();
           return db.transactions.where('date').between(start, end, true, true).reverse().sortBy('date');
         }
-      } catch {}
+      } catch { }
       return db.transactions.orderBy('date').reverse().toArray();
     },
     [selectedMonthFilter, isAllTime]
   );
   const transactions = useMemo(() => transactionsRaw || [], [transactionsRaw]);
+
+  // Filtered datasets respecting the Income Tracking on/off toggle (without deleting stored records)
+  const visibleAllTransactions = useMemo(
+    () => (incomeEnabled ? allTransactions : filterTransactionsByType(allTransactions, 'expense')),
+    [allTransactions, incomeEnabled]
+  );
+  const visibleTransactions = useMemo(
+    () => (incomeEnabled ? transactions : filterTransactionsByType(transactions, 'expense')),
+    [transactions, incomeEnabled]
+  );
+  const visibleSortedCategories = useMemo(
+    () => (incomeEnabled ? sortedCategories : filterCategoriesByType(sortedCategories, 'expense')),
+    [sortedCategories, incomeEnabled]
+  );
 
   // Check Daily Expense Reminder periodically across all-time transactions
   useEffect(() => {
@@ -434,6 +469,8 @@ export function App() {
   // Current Month / All-Time Data Calculation
   const {
     currentMonthTotal,
+    currentMonthIncome,
+    netCashFlow,
     currentMonthDailyAverage,
     todaySpent,
     highestExpenseInMonth,
@@ -443,7 +480,9 @@ export function App() {
     let date = new Date();
     const now = new Date();
     const todayStr = format(now, 'yyyy-MM-dd');
-    const todayTotal = transactions
+    const expenseVisible = filterTransactionsByType(visibleTransactions, 'expense');
+
+    const todayTotal = expenseVisible
       .filter((tx) => {
         try {
           return tx.date.startsWith(todayStr);
@@ -467,7 +506,7 @@ export function App() {
       const start = startOfMonth(date);
       const end = endOfMonth(date);
 
-      const monthTxs = transactions.filter((tx) => {
+      const monthAllTxs = visibleTransactions.filter((tx) => {
         try {
           const d = parseISO(tx.date);
           return isWithinInterval(d, { start, end });
@@ -475,8 +514,10 @@ export function App() {
           return false;
         }
       });
+      const monthExpenseTxs = filterTransactionsByType(monthAllTxs, 'expense');
+      const cashFlow = calculateCashFlowSummary(monthAllTxs);
 
-      const total = monthTxs.reduce((acc, tx) => acc + tx.amount, 0);
+      const total = cashFlow.totalExpense;
 
       const isViewingCurrentMonth =
         date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
@@ -487,10 +528,12 @@ export function App() {
         days = Math.max(1, end.getDate());
       }
       const dailyAverage = Math.round(total / days);
-      const highest = monthTxs.reduce((max, tx) => Math.max(max, tx.amount), 0);
+      const highest = monthExpenseTxs.reduce((max, tx) => Math.max(max, tx.amount), 0);
 
       return {
         currentMonthTotal: total,
+        currentMonthIncome: cashFlow.totalIncome,
+        netCashFlow: cashFlow.netCashFlow,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
         highestExpenseInMonth: highest,
@@ -499,19 +542,22 @@ export function App() {
       };
     } else {
       // ALL-TIME CALCULATION
-      const total = transactions.reduce((acc, tx) => acc + tx.amount, 0);
+      const cashFlow = calculateCashFlowSummary(visibleTransactions);
+      const total = cashFlow.totalExpense;
       const uniqueDays = new Set<string>();
-      transactions.forEach((tx) => {
+      expenseVisible.forEach((tx) => {
         try {
           uniqueDays.add(tx.date.split('T')[0]);
-        } catch {}
+        } catch { }
       });
       const daysCount = Math.max(1, uniqueDays.size);
       const dailyAverage = Math.round(total / daysCount);
-      const highest = transactions.reduce((max, tx) => Math.max(max, tx.amount), 0);
+      const highest = expenseVisible.reduce((max, tx) => Math.max(max, tx.amount), 0);
 
       return {
         currentMonthTotal: total,
+        currentMonthIncome: cashFlow.totalIncome,
+        netCashFlow: cashFlow.netCashFlow,
         currentMonthDailyAverage: dailyAverage,
         todaySpent: todayTotal,
         highestExpenseInMonth: highest,
@@ -519,7 +565,7 @@ export function App() {
         currentDate: new Date(),
       };
     }
-  }, [transactions, selectedMonthFilter, isAllTime]);
+  }, [visibleTransactions, selectedMonthFilter, isAllTime]);
 
   const handlePrevMonth = () => {
     if (isAllTime) {
@@ -543,6 +589,7 @@ export function App() {
 
   // CRUD Handlers for Transactions
   const handleSaveTransaction = async (data: Omit<Transaction, 'id' | 'createdAt'>, id?: string) => {
+    const isIncome = getTransactionType(data) === 'income';
     if (id) {
       await db.transactions.update(id, {
         ...data,
@@ -551,7 +598,16 @@ export function App() {
         const updated = await db.transactions.get(id);
         if (updated) syncService.pushTransaction(updated, currentUser.id);
       }
-      showToast(language === 'id' ? 'Catatan pengeluaran berhasil diperbarui!' : 'Expense updated successfully!', 'success');
+      showToast(
+        language === 'id'
+          ? isIncome
+            ? 'Catatan pendapatan berhasil diperbarui!'
+            : 'Catatan pengeluaran berhasil diperbarui!'
+          : isIncome
+            ? 'Income updated successfully!'
+            : 'Expense updated successfully!',
+        'success'
+      );
     } else {
       const newTransaction: Transaction = {
         id: generateId('tx'),
@@ -564,8 +620,8 @@ export function App() {
       }
       showToast(
         language === 'id'
-          ? `Berhasil mencatat ${formatIDR(data.amount, false, language)}!`
-          : `Recorded ${formatIDR(data.amount, false, language)}!`,
+          ? `Berhasil mencatat ${isIncome ? 'pemasukan' : 'pengeluaran'} ${formatIDR(data.amount, false, language)}!`
+          : `Recorded ${isIncome ? 'income' : 'expense'} ${formatIDR(data.amount, false, language)}!`,
         'success'
       );
     }
@@ -634,20 +690,51 @@ export function App() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    const remainingCats = categories.filter((c) => c.id !== id);
-    let fallbackCatId = remainingCats.find((c) => c.id === 'cat-others')?.id || remainingCats[0]?.id;
+    const deletingCat = categories.find((c) => c.id === id);
+    const deletingType = getCategoryType(deletingCat);
+    const remainingSameType = categories.filter(
+      (c) => c.id !== id && getCategoryType(c) === deletingType
+    );
 
+    const anchorId = deletingType === 'income' ? 'cat-inc-others' : 'cat-others';
+    if (id === anchorId && remainingSameType.length === 0) {
+      showToast(
+        language === 'id'
+          ? 'Kategori bawaan terakhir tidak dapat dihapus.'
+          : 'The last default fallback category cannot be deleted.',
+        'info'
+      );
+      return;
+    }
+
+    let fallbackCatId =
+      remainingSameType.find((c) => c.id === anchorId)?.id || remainingSameType[0]?.id;
+
+    let createdAnchor: Category | null = null;
     if (!fallbackCatId) {
-      const defaultOthers: Category = {
-        id: 'cat-others',
-        name: 'Lain-lain',
-        icon: 'CircleEllipsis',
-        color: '#64748b',
-        isDefault: true,
-        createdAt: new Date().toISOString(),
-      };
-      await db.categories.add(defaultOthers);
-      fallbackCatId = defaultOthers.id;
+      createdAnchor =
+        deletingType === 'income'
+          ? {
+            id: 'cat-inc-others',
+            name: 'Pemasukan Lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'income',
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+          }
+          : {
+            id: 'cat-others',
+            name: 'Lain-lain',
+            icon: 'CircleEllipsis',
+            color: '#64748b',
+            type: 'expense',
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+          };
+      syncService.unmarkCategoryDeleted(createdAnchor.id);
+      await db.categories.put(createdAnchor);
+      fallbackCatId = createdAnchor.id;
     }
 
     // 1. Re-route related transactions locally in Dexie
@@ -665,8 +752,11 @@ export function App() {
     // 3. Delete category budget entries locally in Dexie
     await db.budgets.where('categoryId').equals(id).delete();
 
-    // 4. Sync re-routed data to cloud BEFORE deleting category to prevent FK violation & orphaned rows
+    // 4. Sync new anchor & re-routed data to cloud BEFORE deleting category to prevent FK violation & orphaned rows
     if (currentUser?.id) {
+      if (createdAnchor) {
+        await syncService.pushCategory(createdAnchor, currentUser.id);
+      }
       const updatedTxs = await db.transactions.where('id').anyOf(relatedTxs.map((t) => t.id)).toArray();
       for (const tx of updatedTxs) {
         await syncService.pushTransaction(tx, currentUser.id);
@@ -713,7 +803,7 @@ export function App() {
       await db.transactions.clear();
       await db.budgets.clear();
       await db.recurringExpenses.clear();
-      await db.categories.bulkPut(DEFAULT_CATEGORIES);
+      await db.categories.bulkPut([...DEFAULT_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
     });
     showToast(language === 'id' ? 'Seluruh data berhasil direset.' : 'All data successfully reset.', 'info');
   };
@@ -729,7 +819,8 @@ export function App() {
         setPresetDraft({
           id: '',
           amount: 0,
-          categoryId: sortedCategories[0]?.id || categories[0]?.id || '',
+          categoryId: filterCategoriesByType(sortedCategories, 'expense')[0]?.id || sortedCategories[0]?.id || '',
+          type: 'expense',
           date: targetDate.toISOString(),
           notes: '',
           paymentMethod: 'Tunai',
@@ -740,7 +831,7 @@ export function App() {
         navigate('/transactions/new');
       }
     },
-    [sortedCategories, categories, navigate]
+    [sortedCategories, navigate]
   );
 
   // Category Batch Reassignment Handler
@@ -788,6 +879,7 @@ export function App() {
       id: '',
       amount: preset.amount,
       categoryId: preset.categoryId,
+      type: preset.type || 'expense',
       date: now.toISOString(),
       notes: preset.notes,
       paymentMethod: 'Tunai',
@@ -833,21 +925,30 @@ export function App() {
         {/* Top Summary Banner: Liquid Glass Stats Card */}
         {activeTab === 'transactions' && (
           <div className="space-y-4">
-            <div className="glass-card rounded-3xl p-5 sm:p-6">
+            <div className="glass-card rounded-3xl p-4 sm:p-6">
               {/* Header Row: Label & Month Navigator */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-900/5 dark:border-white/10">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
-                    <Banknote className="w-4 h-4" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b border-slate-900/5 dark:border-white/10">
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] flex items-center justify-center text-white shrink-0">
+                      <Banknote className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tracking-wide">
+                      {incomeEnabled
+                        ? isAllTime
+                          ? t.cashFlowAllTime
+                          : t.cashFlowThisMonth
+                        : isAllTime
+                          ? t.totalExpenseAllTime
+                          : t.totalExpenseThisMonth}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 tracking-wide">
-                    {isAllTime ? t.totalExpenseAllTime : t.totalExpenseThisMonth}
-                  </span>
+
                   {/* Privacy / Sensor Nominal Toggle Button */}
                   <button
                     type="button"
                     onClick={handleToggleHideNominals}
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
                     title={hideNominals ? t.showNominal : t.hideNominal}
                     aria-label={hideNominals ? t.showNominal : t.hideNominal}
                   >
@@ -860,11 +961,13 @@ export function App() {
                 </div>
 
                 {/* Month Navigator */}
-                <div className="flex items-center justify-between sm:justify-end space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-end space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
                   <button
+                    type="button"
                     onClick={handlePrevMonth}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
                     title={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
+                    aria-label={language === 'en' ? 'Previous Month' : 'Bulan Sebelumnya'}
                   >
                     <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
                   </button>
@@ -872,7 +975,7 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setIsMonthPickerOpen(true)}
-                    className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm min-w-[120px]"
+                    className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] flex items-center justify-center space-x-1.5 px-3 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm min-w-[120px] cursor-pointer"
                     title={language === 'en' ? 'Click to select month & year' : 'Klik untuk memilih bulan & tahun'}
                   >
                     {isAllTime ? (
@@ -891,61 +994,105 @@ export function App() {
                   </button>
 
                   <button
+                    type="button"
                     onClick={handleNextMonth}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
                     title={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
+                    aria-label={language === 'en' ? 'Next Month' : 'Bulan Berikutnya'}
                   >
                     <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
               </div>
 
-              {/* Main Content: Big Number & Auxiliary Metrics */}
-              <div className="pt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-end">
-                {/* Left: Total */}
+              {/* Main Content: 1 Primary Figure + 2 Concise Secondary Metrics */}
+              <div className="pt-3.5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-end">
                 <div className="lg:col-span-7">
-                  <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
-                    {formatIDR(currentMonthTotal, false, language, hideNominals)}
-                  </div>
+                  {incomeEnabled ? (
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1">
+                        {t.netCashFlowLabel}
+                      </span>
+                      <div
+                        className={`text-3xl sm:text-5xl font-extrabold tracking-tight leading-none ${netCashFlow < 0
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : netCashFlow > 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-slate-900 dark:text-white'
+                          }`}
+                      >
+                        {!hideNominals && (netCashFlow > 0 ? '+' : netCashFlow < 0 ? '−' : '')}
+                        {formatIDR(Math.abs(netCashFlow), false, language, hideNominals)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
+                      {formatIDR(currentMonthTotal, false, language, hideNominals)}
+                    </div>
+                  )}
                 </div>
 
-                {/* Right: Inline Metrics */}
-                <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 gap-y-3 w-full lg:border-l lg:border-slate-900/10 dark:lg:border-white/10 lg:pl-8">
-                  <div>
-                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                      <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="truncate">{t.kpiDailyAverage}</span>
-                    </div>
-                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
-                      {formatIDR(currentMonthDailyAverage, false, language, hideNominals)}
-                    </div>
-                  </div>
+                <div className="lg:col-span-5 grid grid-cols-2 gap-x-6 w-full pt-3 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800/80 lg:pl-8">
+                  {incomeEnabled ? (
+                    <>
+                      <div>
+                        <div className="flex items-center space-x-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="truncate">{t.totalIncomeLabel}</span>
+                        </div>
+                        <div className="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 tracking-tight truncate">
+                          {!hideNominals && currentMonthIncome > 0 ? '+' : ''}
+                          {formatIDR(currentMonthIncome, false, language, hideNominals)}
+                        </div>
+                      </div>
 
-                  <div>
-                    <div className="flex items-center space-x-1.5 text-xs font-medium text-slate-400">
-                      <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="truncate">
-                        {isCurrentMonth ? (t.kpiToday || 'Hari Ini') : t.kpiHighestExpense}
-                      </span>
-                    </div>
-                    <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
-                      {formatIDR(
-                        isCurrentMonth ? todaySpent : highestExpenseInMonth,
-                        false,
-                        language,
-                        hideNominals
-                      )}
-                    </div>
-                  </div>
+                      <div>
+                        <div className="flex items-center space-x-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <ArrowDownRight className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span className="truncate">{t.totalExpenseLabel}</span>
+                        </div>
+                        <div className="text-base sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5 tracking-tight truncate">
+                          {!hideNominals && currentMonthTotal > 0 ? '−' : ''}
+                          {formatIDR(currentMonthTotal, false, language, hideNominals)}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 block truncate">
+                          {t.kpiDailyAverage}
+                        </span>
+                        <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                          {formatIDR(currentMonthDailyAverage, false, language, hideNominals)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 block truncate">
+                          {isCurrentMonth ? (t.kpiToday || 'Hari Ini') : t.kpiHighestExpense}
+                        </span>
+                        <div className="text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight truncate">
+                          {formatIDR(
+                            isCurrentMonth ? todaySpent : highestExpenseInMonth,
+                            false,
+                            language,
+                            hideNominals
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Quick Presets Bar */}
             <QuickPresets
-              categories={sortedCategories}
-              transactions={transactions}
+              categories={visibleSortedCategories}
+              transactions={visibleTransactions}
               onSelectPreset={handleSelectQuickPreset}
+              incomeEnabled={incomeEnabled}
               hideNominals={hideNominals}
               lang={language}
               t={t}
@@ -956,8 +1103,8 @@ export function App() {
         {/* View Switcher Content with Suspense Lazy Loading */}
         {activeTab === 'transactions' && (
           <TransactionList
-            transactions={transactions}
-            categories={sortedCategories}
+            transactions={visibleTransactions}
+            categories={visibleSortedCategories}
             selectedMonthFilter={selectedMonthFilter}
             onEditTransaction={(tx) => {
               navigate(`/transactions/edit/${tx.id}`);
@@ -965,6 +1112,7 @@ export function App() {
             onDeleteTransaction={handleDeleteTransaction}
             onOpenNewTransaction={handleOpenNewTransaction}
             onAddTransactionOnDate={handleAddTransactionOnDate}
+            incomeEnabled={incomeEnabled}
             hideNominals={hideNominals}
             lang={language}
             t={t}
@@ -975,8 +1123,10 @@ export function App() {
           <ErrorBoundary lang={language}>
             <Suspense fallback={<ViewLoaderFallback />}>
               <AnalyticsView
-                transactions={allTransactionsRaw}
-                categories={sortedCategories}
+                transactions={allTransactionsRaw === undefined ? undefined : visibleAllTransactions}
+                categories={visibleSortedCategories}
+                incomeEnabled={incomeEnabled}
+                hideNominals={hideNominals}
                 darkMode={darkMode}
                 lang={language}
                 t={t}
@@ -990,7 +1140,7 @@ export function App() {
           <ErrorBoundary lang={language}>
             <Suspense fallback={<ViewLoaderFallback />}>
               <BudgetManager
-                categories={sortedCategories}
+                categories={visibleSortedCategories}
                 transactions={allTransactions}
                 allTransactions={allTransactions}
                 onUpdateCategoryBudget={handleUpdateCategoryBudget}
@@ -998,6 +1148,7 @@ export function App() {
                 onEditTransaction={(tx) => {
                   navigate(`/transactions/edit/${tx.id}`);
                 }}
+                incomeEnabled={incomeEnabled}
                 lang={language}
                 t={t}
               />
@@ -1010,7 +1161,7 @@ export function App() {
             <Suspense fallback={<ViewLoaderFallback />}>
               <CategoryManager
                 categories={categories}
-                transactions={allTransactions}
+                transactions={visibleAllTransactions}
                 onSaveCategory={handleSaveCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onBatchMoveTransactions={handleBatchMoveTransactions}
@@ -1020,6 +1171,7 @@ export function App() {
                 sortMode={categorySortMode}
                 onChangeSortMode={handleSortModeChange}
                 onReorderCategories={handleReorderCategories}
+                incomeEnabled={incomeEnabled}
                 hideNominals={hideNominals}
                 lang={language}
                 t={t}
@@ -1061,8 +1213,10 @@ export function App() {
                   showToast(t.authDeleteAccountSuccess || 'Akun berhasil dihapus.', 'info');
                 }}
                 onBackToTransactions={() => handleTabNavigation('transactions')}
-                transactionCount={allTransactions.length}
-                categoryCount={categories.length}
+                incomeEnabled={incomeEnabled}
+                onToggleIncomeEnabled={handleToggleIncomeEnabled}
+                transactionCount={visibleAllTransactions.length}
+                categoryCount={visibleSortedCategories.length}
                 t={t}
               />
             </Suspense>
@@ -1089,6 +1243,7 @@ export function App() {
         onDelete={handleDeleteTransaction}
         categories={sortedCategories}
         initialData={editingTransaction}
+        incomeEnabled={incomeEnabled}
         onOpenCategoryManager={() => {
           navigate('/categories');
         }}
@@ -1102,8 +1257,14 @@ export function App() {
           <ExcelModal
             isOpen={isExcelModalOpen}
             onClose={handleCloseModals}
-            transactions={transactions}
-            categories={sortedCategories}
+            transactions={visibleTransactions}
+            categories={visibleSortedCategories}
+            incomeEnabled={incomeEnabled}
+            onAutoEnableIncome={() => {
+              setIncomeEnabled(true);
+              setIncomeTrackingEnabled(true);
+              showToast(t.incomeAutoEnabledToast, 'info');
+            }}
             lang={language}
             t={t}
             onDataChanged={(msg) => {

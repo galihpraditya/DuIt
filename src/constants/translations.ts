@@ -157,6 +157,7 @@ export interface Translations {
   kpiHighestExpense: string;
   kpiHighestExpenseDesc: string;
   kpiFrequency: string;
+  kpiIncomeFrequency: string;
   kpiTimes: string;
   kpiFreqDesc: string;
   kpiToday: string;
@@ -413,6 +414,51 @@ export interface Translations {
 
   // Mobile Navigation
   back: string;
+
+  // Income Tracking & Cash Flow
+  incomeFeatureSection: string;
+  incomeFeatureTitle: string;
+  incomeFeatureDesc: string;
+  incomeFeatureEnabledToast: string;
+  incomeFeatureDisabledToast: string;
+  expenseTypeLabel: string;
+  incomeTypeLabel: string;
+  allTypes: string;
+  cashFlowThisMonth: string;
+  cashFlowAllTime: string;
+  totalIncomeLabel: string;
+  totalExpenseLabel: string;
+  netCashFlowLabel: string;
+  statusSurplus: string;
+  statusBoncos: string;
+  statusEven: string;
+  statusNoIncome: string;
+  incomeCoveredPct: string;
+  incomeAmountLabel: string;
+  incomeNotesPlaceholder: string;
+  modalNewIncomeTitle: string;
+  modalEditIncomeTitle: string;
+  saveIncomeBtn: string;
+  updateIncomeBtn: string;
+  errorValidIncomeAmount: string;
+  errorSelectIncomeCategory: string;
+  expenseCategoriesTab: string;
+  incomeCategoriesTab: string;
+  totalIncomeEarned: string;
+  analyticsModeCashFlow: string;
+  analyticsModeExpense: string;
+  analyticsModeIncome: string;
+  cashFlowHealthTitle: string;
+  savingRateLabel: string;
+  expenseRatioLabel: string;
+  kpiTotalIncome: string;
+  kpiHighestIncome: string;
+  incomeTrendTitle: string;
+  cashFlowTrendTitle: string;
+  importColType: string;
+  incomeAutoEnabledToast: string;
+  enableIncomeBtn: string;
+  disableIncomeBtn: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -573,6 +619,7 @@ export const translations: Record<Language, Translations> = {
     kpiHighestExpense: 'Pengeluaran Terbesar',
     kpiHighestExpenseDesc: '',
     kpiFrequency: 'Frekuensi Belanja',
+    kpiIncomeFrequency: 'Frekuensi Pemasukan',
     kpiTimes: 'kali',
     kpiFreqDesc: '',
     kpiToday: 'Hari Ini',
@@ -694,7 +741,7 @@ export const translations: Record<Language, Translations> = {
     reminderActiveBadge: 'Pengingat Aktif',
     reminderInactiveBadge: 'Nonaktif',
     reminderNotificationTitle: 'DuIt - Pengingat Harian',
-    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol! 💰',
+    reminderNotificationBody: 'Kamu belum mencatat pengeluaran hari ini. Yuk catat agar keuanganmu tetap terkontrol.',
 
     // Groq AI Settings & Smart Input
     aiSection: 'Input Cerdas',
@@ -832,6 +879,51 @@ export const translations: Record<Language, Translations> = {
 
     // Mobile Navigation
     back: 'Kembali',
+
+    // Income Tracking & Cash Flow
+    incomeFeatureSection: 'Fitur Pendapatan & Arus Kas',
+    incomeFeatureTitle: 'Aktifkan Pelacakan Pendapatan',
+    incomeFeatureDesc: 'Catat pemasukan untuk melihat perbandingan uang masuk vs keluar (Surplus atau Boncos). Jika dimatikan, data pendapatan tetap tersimpan aman dan hanya disembunyikan.',
+    incomeFeatureEnabledToast: 'Fitur pendapatan diaktifkan. Arus kas kini terlihat!',
+    incomeFeatureDisabledToast: 'Fitur pendapatan dimatikan. Fokus ke pengeluaran.',
+    expenseTypeLabel: 'Pengeluaran',
+    incomeTypeLabel: 'Pendapatan',
+    allTypes: 'Semua Tipe',
+    cashFlowThisMonth: 'Arus Kas Bulan Ini',
+    cashFlowAllTime: 'Arus Kas Keseluruhan',
+    totalIncomeLabel: 'Pendapatan',
+    totalExpenseLabel: 'Pengeluaran',
+    netCashFlowLabel: 'Selisih Bersih',
+    statusSurplus: 'Surplus',
+    statusBoncos: 'Boncos',
+    statusEven: 'Impas',
+    statusNoIncome: 'Belum Ada Pemasukan',
+    incomeCoveredPct: 'dari pendapatan terpakai',
+    incomeAmountLabel: 'Nominal Pendapatan',
+    incomeNotesPlaceholder: 'Contoh: Gaji bulanan, Bonus proyek, Fee freelance',
+    modalNewIncomeTitle: 'Catat Pendapatan Baru',
+    modalEditIncomeTitle: 'Edit Pendapatan',
+    saveIncomeBtn: 'Simpan Pendapatan',
+    updateIncomeBtn: 'Perbarui Pendapatan',
+    errorValidIncomeAmount: 'Harap masukkan nominal pendapatan yang valid.',
+    errorSelectIncomeCategory: 'Pilih kategori pendapatan.',
+    expenseCategoriesTab: 'Pengeluaran',
+    incomeCategoriesTab: 'Pendapatan',
+    totalIncomeEarned: 'Total pemasukan',
+    analyticsModeCashFlow: 'Arus Kas',
+    analyticsModeExpense: 'Pengeluaran',
+    analyticsModeIncome: 'Pendapatan',
+    cashFlowHealthTitle: 'Kesehatan Arus Kas',
+    savingRateLabel: 'Rasio Tabungan',
+    expenseRatioLabel: 'Terpakai',
+    kpiTotalIncome: 'Total Pendapatan',
+    kpiHighestIncome: 'Pendapatan Terbesar',
+    incomeTrendTitle: 'Tren Pendapatan',
+    cashFlowTrendTitle: 'Perbandingan Masuk vs Keluar',
+    importColType: 'Tipe',
+    incomeAutoEnabledToast: 'Mode Pendapatan otomatis diaktifkan karena file impor berisi data pendapatan.',
+    enableIncomeBtn: 'Aktifkan Pendapatan',
+    disableIncomeBtn: 'Mode Hanya Pengeluaran',
   },
   en: {
     appName: 'DuIt',
@@ -990,6 +1082,7 @@ export const translations: Record<Language, Translations> = {
     kpiHighestExpense: 'Highest Single Expense',
     kpiHighestExpenseDesc: '',
     kpiFrequency: 'Spending Frequency',
+    kpiIncomeFrequency: 'Income Frequency',
     kpiTimes: 'times',
     kpiFreqDesc: '',
     kpiToday: 'Today',
@@ -1111,7 +1204,7 @@ export const translations: Record<Language, Translations> = {
     reminderActiveBadge: 'Reminder Active',
     reminderInactiveBadge: 'Disabled',
     reminderNotificationTitle: 'DuIt - Daily Reminder',
-    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget! 💰",
+    reminderNotificationBody: "You haven't recorded any expenses today. Track your spending to stay on budget.",
 
     // Groq AI Settings & Smart Input
     aiSection: 'Smart Input',
@@ -1248,6 +1341,51 @@ export const translations: Record<Language, Translations> = {
 
     // Mobile Navigation
     back: 'Back',
+
+    // Income Tracking & Cash Flow
+    incomeFeatureSection: 'Income & Cash Flow Tracking',
+    incomeFeatureTitle: 'Enable Income Tracking',
+    incomeFeatureDesc: 'Record income to compare money in vs out (Surplus or Deficit). Turning this off hides income views without deleting saved records.',
+    incomeFeatureEnabledToast: 'Income tracking enabled. Cash flow is now visible!',
+    incomeFeatureDisabledToast: 'Income tracking disabled. Focused on expenses.',
+    expenseTypeLabel: 'Expense',
+    incomeTypeLabel: 'Income',
+    allTypes: 'All Types',
+    cashFlowThisMonth: 'Cash Flow This Month',
+    cashFlowAllTime: 'All-Time Cash Flow',
+    totalIncomeLabel: 'Income',
+    totalExpenseLabel: 'Expenses',
+    netCashFlowLabel: 'Net Cash Flow',
+    statusSurplus: 'Surplus',
+    statusBoncos: 'Deficit',
+    statusEven: 'Break-even',
+    statusNoIncome: 'No Income Logged',
+    incomeCoveredPct: 'of income spent',
+    incomeAmountLabel: 'Income Amount',
+    incomeNotesPlaceholder: 'Example: Monthly salary, Project bonus, Freelance payout',
+    modalNewIncomeTitle: 'Record New Income',
+    modalEditIncomeTitle: 'Edit Income',
+    saveIncomeBtn: 'Save Income',
+    updateIncomeBtn: 'Update Income',
+    errorValidIncomeAmount: 'Please enter a valid income amount.',
+    errorSelectIncomeCategory: 'Please select an income category.',
+    expenseCategoriesTab: 'Expenses',
+    incomeCategoriesTab: 'Income',
+    totalIncomeEarned: 'Total income',
+    analyticsModeCashFlow: 'Cash Flow',
+    analyticsModeExpense: 'Expenses',
+    analyticsModeIncome: 'Income',
+    cashFlowHealthTitle: 'Cash Flow Health',
+    savingRateLabel: 'Savings Rate',
+    expenseRatioLabel: 'Spent',
+    kpiTotalIncome: 'Total Income',
+    kpiHighestIncome: 'Highest Single Income',
+    incomeTrendTitle: 'Income Trend',
+    cashFlowTrendTitle: 'Income vs Expense Comparison',
+    importColType: 'Type',
+    incomeAutoEnabledToast: 'Income tracking was enabled automatically because the imported file contains income records.',
+    enableIncomeBtn: 'Enable Income',
+    disableIncomeBtn: 'Expense-Only Mode',
   },
 };
 

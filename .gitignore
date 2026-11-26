@@ -35,9 +35,14 @@ android/.gradle/
 *.sln
 *.sw?
 
-# Agent & AI configs/skills
+# Agent & AI configs/skills & audit artifacts
 .agents/
 .gemini/
+.claude/
+anti-slop/
+docs/superpowers/
 __pycache__/
 *.pyc
+*.tsbuildinfo
+coverage/
 

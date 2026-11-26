@@ -14,7 +14,12 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import type { Category, CategorySortMode, Transaction } from '../../types';
+import type { Category, CategorySortMode, Transaction, TransactionType } from '../../types';
+import {
+  getCategoryType,
+  filterCategoriesByType,
+  filterTransactionsByType,
+} from '../../utils/transactionHelpers';
 import { DynamicIcon, IconPicker } from '../common/IconPicker';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { CategoryDetailModal } from './CategoryDetailModal';
@@ -39,6 +44,7 @@ interface CategoryManagerProps {
   sortMode?: CategorySortMode;
   onChangeSortMode?: (mode: CategorySortMode) => void;
   onReorderCategories?: (reorderedCategories: Category[]) => Promise<void>;
+  incomeEnabled?: boolean;
   hideNominals?: boolean;
   lang?: Language;
   t: Translations;
@@ -72,12 +78,33 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   sortMode,
   onChangeSortMode,
   onReorderCategories,
+  incomeEnabled = false,
   hideNominals = false,
   lang = 'id',
   t,
 }) => {
   const [internalSortMode, setInternalSortMode] = useState<CategorySortMode>(() => getStoredCategorySortMode());
   const activeSortMode = sortMode ?? internalSortMode;
+  const [activeTypeTab, setActiveTypeTab] = useState<TransactionType>('expense');
+
+  const effectiveTypeTab: TransactionType = incomeEnabled ? activeTypeTab : 'expense';
+  const typedCategories = useMemo(
+    () => filterCategoriesByType(categories, effectiveTypeTab),
+    [categories, effectiveTypeTab]
+  );
+  const typedTransactions = useMemo(
+    () => filterTransactionsByType(transactions, effectiveTypeTab),
+    [transactions, effectiveTypeTab]
+  );
+
+  const expenseCategoriesCount = useMemo(
+    () => filterCategoriesByType(categories, 'expense').length,
+    [categories]
+  );
+  const incomeCategoriesCount = useMemo(
+    () => filterCategoriesByType(categories, 'income').length,
+    [categories]
+  );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -87,14 +114,15 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('Utensils');
   const [color, setColor] = useState('#f97316');
+  const [catType, setCatType] = useState<TransactionType>('expense');
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
   const sortedCategories = useMemo(() => {
-    return sortCategories(categories, activeSortMode, transactions);
-  }, [categories, activeSortMode, transactions]);
+    return sortCategories(typedCategories, activeSortMode, typedTransactions);
+  }, [typedCategories, activeSortMode, typedTransactions]);
 
   const handleSortChange = async (newMode: CategorySortMode) => {
     if (newMode === 'manual') {
@@ -132,19 +160,22 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const openAddModal = () => {
     setEditingCategory(null);
     setName('');
-    setIcon('Utensils');
-    setColor('#f97316');
+    setCatType(effectiveTypeTab);
+    setIcon(effectiveTypeTab === 'income' ? 'Briefcase' : 'Utensils');
+    setColor(effectiveTypeTab === 'income' ? '#10b981' : '#f97316');
     setBudgetLimitStr('');
     setError('');
     setIsModalOpen(true);
   };
 
   const openEditModal = (cat: Category) => {
+    const typeOfCat = getCategoryType(cat);
     setEditingCategory(cat);
     setName(cat.name);
     setIcon(cat.icon);
     setColor(cat.color);
-    setBudgetLimitStr(cat.budgetLimit ? cat.budgetLimit.toString() : '');
+    setCatType(typeOfCat);
+    setBudgetLimitStr(typeOfCat === 'expense' && cat.budgetLimit ? cat.budgetLimit.toString() : '');
     setError('');
     setIsModalOpen(true);
   };
@@ -159,14 +190,15 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     try {
       setIsSubmitting(true);
       const cleanStr = budgetLimitStr.replace(/[^0-9]/g, '');
-      const budgetLimit = cleanStr ? parseInt(cleanStr, 10) : undefined;
+      const budgetLimit = catType === 'expense' && cleanStr ? parseInt(cleanStr, 10) : undefined;
       await onSaveCategory(
         {
           name: name.trim(),
           icon,
           color,
+          type: catType,
           budgetLimit: isNaN(budgetLimit as number) ? undefined : budgetLimit,
-          order: editingCategory ? editingCategory.order : categories.length,
+          order: editingCategory ? editingCategory.order : typedCategories.length,
         },
         editingCategory?.id
       );
@@ -180,73 +212,100 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   const categorySpendingMap = useMemo(() => {
     const map = new Map<string, number>();
-    transactions.forEach((tx) => {
+    typedTransactions.forEach((tx) => {
       map.set(tx.categoryId, (map.get(tx.categoryId) || 0) + tx.amount);
     });
     return map;
-  }, [transactions]);
+  }, [typedTransactions]);
 
   return (
     <div className="space-y-4">
-      {/* Unified Compact Header Card - Mobile Ergonomic */}
-      <div className="glass-card p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        {/* Left: Icon, Title & Category Count Badge */}
-        <div className="flex items-center space-x-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <Grid className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1 flex items-center space-x-2">
+      {/* Unified Compact Header & Filter Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 rounded-2xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Grid className="w-4 h-4" />
+            </div>
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-              {t.categoryHeaderTitle}
+              {incomeEnabled
+                ? effectiveTypeTab === 'income'
+                  ? (lang === 'en' ? 'Income Categories' : 'Kategori Pendapatan')
+                  : t.categoryHeaderTitle
+                : t.categoryHeaderTitle}
             </h2>
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-              {categories.length}
-            </span>
           </div>
-        </div>
 
-        {/* Right Controls: Sort Selector & Add Button */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Integrated Sort Selector */}
-          <div className="relative flex-1 sm:flex-initial min-w-0">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
-              <ArrowUpDown className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Integrated Sort Selector */}
+            <div className="relative flex-1 sm:flex-initial min-w-0">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 dark:text-slate-400">
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </div>
+              <select
+                id="category-sort-select"
+                value={activeSortMode}
+                onChange={(e) => handleSortChange(e.target.value as CategorySortMode)}
+                className="w-full sm:w-auto min-h-[40px] text-xs font-semibold pl-8 pr-7 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer transition-colors appearance-none truncate"
+                title={t.categorySortBy}
+              >
+                <option value="most_used">{t.sortModeMostUsed}</option>
+                <option value="highest_amount">{t.sortModeHighestAmount}</option>
+                <option value="name_asc">{t.sortModeNameAsc}</option>
+                <option value="name_desc">{t.sortModeNameDesc}</option>
+                <option value="newest">{t.sortModeNewest}</option>
+                <option value="manual">{t.sortModeManual}</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 dark:text-slate-400">
+                <ChevronDown className="w-3 h-3 stroke-[2.5]" />
+              </div>
             </div>
-            <select
-              id="category-sort-select"
-              value={activeSortMode}
-              onChange={(e) => handleSortChange(e.target.value as CategorySortMode)}
-              className="w-full sm:w-auto text-xs font-semibold pl-8 pr-7 py-2.5 sm:py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer transition-all appearance-none truncate"
-              title={t.categorySortBy}
+
+            {/* Add Category Button */}
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="min-h-[40px] px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors active:scale-95 cursor-pointer shrink-0"
             >
-              <option value="most_used">{t.sortModeMostUsed}</option>
-              <option value="highest_amount">{t.sortModeHighestAmount}</option>
-              <option value="name_asc">{t.sortModeNameAsc}</option>
-              <option value="name_desc">{t.sortModeNameDesc}</option>
-              <option value="newest">{t.sortModeNewest}</option>
-              <option value="manual">{t.sortModeManual}</option>
-            </select>
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
-              <ChevronDown className="w-3 h-3 stroke-[2.5]" />
-            </div>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden xs:inline">{t.newCategoryBtn}</span>
+              <span className="xs:hidden">{lang === 'en' ? 'Add' : 'Tambah'}</span>
+            </button>
           </div>
-
-          {/* Add Category Button */}
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="px-3.5 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer shadow-sm shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden xs:inline">{t.newCategoryBtn}</span>
-            <span className="xs:hidden">{lang === 'en' ? 'Add' : 'Tambah'}</span>
-          </button>
         </div>
+
+        {/* Expense / Income Type Tabs Integrated in Toolbar */}
+        {incomeEnabled && (
+          <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70">
+            <button
+              type="button"
+              onClick={() => setActiveTypeTab('expense')}
+              className={`min-h-[36px] px-4 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                effectiveTypeTab === 'expense'
+                  ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              {t.expenseCategoriesTab} ({expenseCategoriesCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTypeTab('income')}
+              className={`min-h-[36px] px-4 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                effectiveTypeTab === 'income'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              {t.incomeCategoriesTab} ({incomeCategoriesCount})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Manual Reordering Hint (Only when in manual mode) */}
       {activeSortMode === 'manual' && (
-        <div className="px-3.5 sm:px-4 py-2 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 animate-in fade-in duration-200">
+        <div className="px-3.5 sm:px-4 py-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
           <span className="flex items-center space-x-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
             <span>
@@ -268,109 +327,103 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
           return (
             <div
               key={cat.id}
-              onClick={() => setSelectedCategoryForDetail(cat)}
-              className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group relative"
-              title={t.categoryDetails}
+              className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 hover:border-emerald-500/40 transition-colors flex flex-col justify-between relative"
             >
-              <div>
-                {/* Header Row: Icon + Title + Action Buttons */}
-                <div className="flex items-center justify-between gap-2.5">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
-                    <div
-                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-105 transition-transform"
-                      style={{ backgroundColor: cat.color }}
-                    >
-                      <DynamicIcon name={cat.icon} className="w-5 h-5" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                        {cat.name}
-                      </h4>
-                    </div>
+              {/* Header Row: Semantic Button Trigger + Isolated Action Buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategoryForDetail(cat)}
+                  className="flex items-center space-x-3 min-w-0 flex-1 text-left group cursor-pointer rounded-xl"
+                  title={t.categoryDetails}
+                >
+                  <div
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center text-white shrink-0 shadow-2xs group-hover:scale-105 transition-transform"
+                    style={{ backgroundColor: cat.color }}
+                  >
+                    <DynamicIcon name={cat.icon} className="w-5 h-5" />
                   </div>
 
-                  {/* Isolated Action Buttons (Does not trigger card onClick) */}
-                  <div className="flex items-center space-x-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {activeSortMode === 'manual' && (
-                      <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 mr-0.5 border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
-                        <button
-                          type="button"
-                          disabled={isFirst || isReordering}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMove(cat.id, 'up');
-                          }}
-                          className="p-1.5 sm:p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-slate-700 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 cursor-pointer disabled:cursor-not-allowed"
-                          title={t.moveUp}
-                          aria-label={t.moveUp}
-                        >
-                          <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isLast || isReordering}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMove(cat.id, 'down');
-                          }}
-                          className="p-1.5 sm:p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-slate-700 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 cursor-pointer disabled:cursor-not-allowed"
-                          title={t.moveDown}
-                          aria-label={t.moveDown}
-                        >
-                          <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditModal(cat);
-                      }}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
-                      title={t.editCategoryTitle}
-                      aria-label={t.editCategoryTitle}
-                    >
-                      <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletingCat(cat);
-                      }}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
-                      title={t.deleteCategoryTitle}
-                      aria-label={t.deleteCategoryTitle}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      {cat.name}
+                    </h4>
                   </div>
+                </button>
+
+                <div className="flex items-center space-x-1 shrink-0">
+                  {activeSortMode === 'manual' && (
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 mr-0.5 border border-slate-200/60 dark:border-slate-700/60">
+                      <button
+                        type="button"
+                        disabled={isFirst || isReordering}
+                        onClick={() => handleMove(cat.id, 'up')}
+                        className="min-h-[36px] min-w-[32px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                        title={t.moveUp}
+                        aria-label={t.moveUp}
+                      >
+                        <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLast || isReordering}
+                        onClick={() => handleMove(cat.id, 'down')}
+                        className="min-h-[36px] min-w-[32px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                        title={t.moveDown}
+                        aria-label={t.moveDown}
+                      >
+                        <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(cat)}
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
+                    title={t.editCategoryTitle}
+                    aria-label={t.editCategoryTitle}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingCat(cat)}
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
+                    title={t.deleteCategoryTitle}
+                    aria-label={t.deleteCategoryTitle}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Bottom Row: Spending Metric & Budget Limit */}
+              {/* Bottom Row: Spending/Income Metric & Optional Budget Limit */}
               <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs gap-2">
                 <div className="min-w-0">
-                  <span className="text-slate-400 text-[11px] block">{lang === 'en' ? 'Total spent' : 'Total terpakai'}</span>
-                  <span className="font-bold text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
+                  <span className="text-slate-600 dark:text-slate-400 text-[11px] block">
+                    {effectiveTypeTab === 'income'
+                      ? t.totalIncomeEarned
+                      : lang === 'en'
+                      ? 'Total spent'
+                      : 'Total terpakai'}
+                  </span>
+                  <span
+                    className={`font-bold text-xs sm:text-sm ${
+                      effectiveTypeTab === 'income'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
                     {formatIDR(totalSpent, false, lang, hideNominals)}
                   </span>
                 </div>
 
-                {cat.budgetLimit ? (
+                {effectiveTypeTab === 'expense' && Boolean(cat.budgetLimit) && (
                   <div className="text-right min-w-0">
-                    <span className="text-slate-400 text-[11px] block">{t.budgetLimitPerMonth}</span>
+                    <span className="text-slate-600 dark:text-slate-400 text-[11px] block">{t.budgetLimitPerMonth}</span>
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
-                      {formatIDR(cat.budgetLimit, false, lang, hideNominals)}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-right">
-                    <span className="text-[11px] text-slate-400 italic">
-                      {lang === 'en' ? 'No limit' : 'Tanpa limit'}
+                      {formatIDR(cat.budgetLimit!, false, lang, hideNominals)}
                     </span>
                   </div>
                 )}
@@ -487,7 +540,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                   <IconPicker selectedIcon={icon} onSelectIcon={setIcon} />
                 </div>
 
-                {/* Optional Budget Limit */}
+                {/* Optional Budget Limit (Expense categories only) */}
+                {catType === 'expense' && (
                 <div>
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center space-x-1">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
@@ -509,6 +563,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                     />
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Sticky Footer Action Buttons */}

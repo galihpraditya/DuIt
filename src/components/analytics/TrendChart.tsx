@@ -11,12 +11,16 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { BarChart3, Zap } from 'lucide-react';
-import type { TrendDataEntry } from './analyticsCalculator';
+import type { TrendDataEntry, CashFlowTrendEntry } from './analyticsCalculator';
 import { formatIDR } from '../../utils/formatters';
 import type { Language, Translations } from '../../constants/translations';
 
 interface TrendChartProps {
   trendData: TrendDataEntry[];
+  cashFlowData?: CashFlowTrendEntry[];
+  mode?: 'single' | 'cashflow';
+  titleOverride?: string;
+  seriesLabel?: string;
   averagePerDay?: number;
   budgetTarget?: number;
   chartType: 'bar' | 'area';
@@ -28,6 +32,10 @@ interface TrendChartProps {
 
 export const TrendChart: React.FC<TrendChartProps> = React.memo(({
   trendData,
+  cashFlowData,
+  mode = 'single',
+  titleOverride,
+  seriesLabel,
   averagePerDay,
   budgetTarget,
   chartType,
@@ -41,12 +49,15 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
       borderRadius: '14px',
       border: darkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
       boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 12px 32px -12px rgba(15,23,42,0.18)',
-      backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+      backgroundColor: 'var(--tooltip-bg)',
       color: darkMode ? '#f8fafc' : '#0f172a',
       fontSize: '12px',
       fontWeight: '600',
     };
   }, [darkMode]);
+
+  const isCashFlowMode = mode === 'cashflow' && Array.isArray(cashFlowData);
+  const activeSeriesLength = isCashFlowMode ? cashFlowData!.length : trendData.length;
 
   return (
     <div className="glass-card p-5 rounded-3xl space-y-4 h-full flex flex-col justify-between">
@@ -55,23 +66,36 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
         <div>
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
             <BarChart3 className="w-4 h-4 text-emerald-500" />
-            <span>{t.trendChartTitle}</span>
+            <span>{titleOverride || t.trendChartTitle}</span>
           </h3>
-          {(Boolean(averagePerDay && averagePerDay > 0) || Boolean(budgetTarget && budgetTarget > 0)) && (
+          {isCashFlowMode ? (
             <div className="flex items-center gap-3 mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {averagePerDay && averagePerDay > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500" />
-                  <span>{t.avgReferenceLineLabel}</span>
-                </div>
-              ) : null}
-              {budgetTarget && budgetTarget > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-0.5 border-t-2 border-dashed border-blue-500" />
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.budgetReferenceLineLabel}</span>
-                </div>
-              ) : null}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+                <span>{t.totalIncomeLabel}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-rose-500" />
+                <span>{t.totalExpenseLabel}</span>
+              </div>
             </div>
+          ) : (
+            (Boolean(averagePerDay && averagePerDay > 0) || Boolean(budgetTarget && budgetTarget > 0)) && (
+              <div className="flex items-center gap-3 mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {averagePerDay && averagePerDay > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500" />
+                    <span>{t.avgReferenceLineLabel}</span>
+                  </div>
+                ) : null}
+                {budgetTarget && budgetTarget > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-0.5 border-t-2 border-dashed border-blue-500" />
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.budgetReferenceLineLabel}</span>
+                  </div>
+                ) : null}
+              </div>
+            )
           )}
         </div>
 
@@ -102,11 +126,91 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
 
       {/* Chart Visualizer */}
       <div className="h-64 sm:h-72 w-full pt-2 min-h-[256px]">
-        {trendData.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-xs text-slate-400 space-y-2">
-            <Zap className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+        {activeSeriesLength === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-xs text-slate-600 dark:text-slate-400 space-y-2">
+            <Zap className="w-6 h-6 text-slate-400 dark:text-slate-500" />
             <span>{t.noDataPeriod}</span>
           </div>
+        ) : isCashFlowMode ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+            {chartType === 'bar' ? (
+              <BarChart data={cashFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={24}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickFormatter={(v) => (v >= 1000000 ? `${v / 1000000}jt` : v >= 1000 ? `${v / 1000}k` : v)}
+                />
+                <Tooltip
+                  formatter={(val: any, name: any) => [
+                    formatIDR(Number(val), false, lang),
+                    name === 'income' ? t.totalIncomeLabel : t.totalExpenseLabel,
+                  ]}
+                  contentStyle={tooltipStyle}
+                />
+                <Bar dataKey="income" fill="#10b981" radius={[5, 5, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="expense" fill="#f43f5e" radius={[5, 5, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            ) : (
+              <AreaChart data={cashFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorIncomeFlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorExpenseFlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={24}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tickFormatter={(v) => (v >= 1000000 ? `${v / 1000000}jt` : v >= 1000 ? `${v / 1000}k` : v)}
+                />
+                <Tooltip
+                  formatter={(val: any, name: any) => [
+                    formatIDR(Number(val), false, lang),
+                    name === 'income' ? t.totalIncomeLabel : t.totalExpenseLabel,
+                  ]}
+                  contentStyle={tooltipStyle}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorIncomeFlow)"
+                  isAnimationActive={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="expense"
+                  stroke="#f43f5e"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorExpenseFlow)"
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            )}
+          </ResponsiveContainer>
         ) : (
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
             {chartType === 'bar' ? (
@@ -125,7 +229,7 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   tickFormatter={(v) => (v >= 1000000 ? `${v / 1000000}jt` : v >= 1000 ? `${v / 1000}k` : v)}
                 />
                 <Tooltip
-                  formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
+                  formatter={(val: any) => [formatIDR(Number(val), false, lang), seriesLabel || t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
                 {budgetTarget && budgetTarget > 0 && (
@@ -187,7 +291,7 @@ export const TrendChart: React.FC<TrendChartProps> = React.memo(({
                   tickFormatter={(v) => (v >= 1000000 ? `${v / 1000000}jt` : v >= 1000 ? `${v / 1000}k` : v)}
                 />
                 <Tooltip
-                  formatter={(val: any) => [formatIDR(Number(val), false, lang), t.kpiTotalExpense]}
+                  formatter={(val: any) => [formatIDR(Number(val), false, lang), seriesLabel || t.kpiTotalExpense]}
                   contentStyle={tooltipStyle}
                 />
                 {budgetTarget && budgetTarget > 0 && (
